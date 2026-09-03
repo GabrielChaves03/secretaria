@@ -1,37 +1,37 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Design system — inspirado no Notion (paleta neutra quente,
-   azul de acento, raios pequenos, sombras sutis).
+   Design system — layout Notion, paleta azul sutil (slate frio),
+   azul de acento, raios pequenos, sombras sutis.
    ============================================================ */
 
 :root {
   /* superfícies */
   --background: #ffffff;
-  --sidebar: #f7f7f5;
+  --sidebar: #f5f7fa;
   --surface: #ffffff;
-  --surface-hover: rgba(55, 53, 47, 0.06);
-  --surface-active: rgba(55, 53, 47, 0.08);
+  --surface-hover: rgba(37, 66, 114, 0.06);
+  --surface-active: rgba(37, 66, 114, 0.10);
 
   /* texto */
-  --foreground: #37352f;
-  --foreground-secondary: rgba(55, 53, 47, 0.65);
-  --foreground-tertiary: rgba(55, 53, 47, 0.45);
+  --foreground: #1e2836;
+  --foreground-secondary: rgba(30, 40, 54, 0.64);
+  --foreground-tertiary: rgba(30, 40, 54, 0.44);
 
   /* linhas */
-  --border: rgba(55, 53, 47, 0.09);
-  --border-strong: rgba(55, 53, 47, 0.16);
+  --border: rgba(30, 51, 92, 0.10);
+  --border-strong: rgba(30, 51, 92, 0.17);
 
-  /* acento (Notion blue) */
-  --accent: #2383e2;
-  --accent-hover: #1a6fc4;
+  /* acento (azul) */
+  --accent: #2f7de1;
+  --accent-hover: #2367bf;
   --accent-foreground: #ffffff;
-  --accent-subtle-bg: #e9f3f9;
-  --accent-subtle-fg: #1a6fc4;
+  --accent-subtle-bg: #eef4fc;
+  --accent-subtle-fg: #2367bf;
 
   /* estado */
-  --danger: #eb5757;
-  --danger-hover: #d64545;
+  --danger: #e5544b;
+  --danger-hover: #cf463d;
 
   --radius: 6px;
   --radius-sm: 4px;
@@ -45,27 +45,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #191919;
-    --sidebar: #202020;
-    --surface: #202020;
-    --surface-hover: rgba(255, 255, 255, 0.055);
-    --surface-active: rgba(255, 255, 255, 0.08);
+    --background: #15191f;
+    --sidebar: #1a1f27;
+    --surface: #1a1f27;
+    --surface-hover: rgba(150, 180, 225, 0.07);
+    --surface-active: rgba(150, 180, 225, 0.11);
 
-    --foreground: rgba(255, 255, 255, 0.81);
-    --foreground-secondary: rgba(255, 255, 255, 0.46);
-    --foreground-tertiary: rgba(255, 255, 255, 0.34);
+    --foreground: rgba(230, 236, 245, 0.85);
+    --foreground-secondary: rgba(230, 236, 245, 0.5);
+    --foreground-tertiary: rgba(230, 236, 245, 0.36);
 
-    --border: rgba(255, 255, 255, 0.094);
-    --border-strong: rgba(255, 255, 255, 0.16);
+    --border: rgba(150, 180, 225, 0.13);
+    --border-strong: rgba(150, 180, 225, 0.2);
 
-    --accent: #2383e2;
-    --accent-hover: #4a9eea;
+    --accent: #4a97e6;
+    --accent-hover: #63a8ec;
     --accent-foreground: #ffffff;
-    --accent-subtle-bg: rgba(35, 131, 226, 0.16);
-    --accent-subtle-fg: #6cb5f0;
+    --accent-subtle-bg: rgba(47, 125, 225, 0.18);
+    --accent-subtle-fg: #85bdf1;
 
-    --danger: #ff6369;
-    --danger-hover: #ff7a7f;
+    --danger: #f16b62;
+    --danger-hover: #f5837b;
 
     --shadow-card: rgba(0, 0, 0, 0.3) 0px 2px 4px,
       rgba(0, 0, 0, 0.2) 0px 1px 2px;
@@ -120,7 +120,7 @@ body {
 }
 
 ::selection {
-  background: rgba(35, 131, 226, 0.2);
+  background: rgba(47, 125, 225, 0.18);
 }
 
 @keyframes overlay-in {
@@ -246,12 +246,12 @@ body {
   white-space: nowrap;
 }
 .pill-gray {
-  background: #f1f1ef;
-  color: #787774;
+  background: #eef1f6;
+  color: #5b6577;
 }
 .pill-blue {
-  background: #e7f1f7;
-  color: #37699b;
+  background: #e6effb;
+  color: #2f68b5;
 }
 .pill-green {
   background: #edf3ec;
@@ -268,12 +268,12 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .pill-gray {
-    background: #333231;
-    color: #9a9a97;
+    background: #2b323d;
+    color: #9aa6b6;
   }
   .pill-blue {
-    background: #1f3a4d;
-    color: #8bbce0;
+    background: #1e3352;
+    color: #8fbdec;
   }
   .pill-green {
     background: #243d30;
