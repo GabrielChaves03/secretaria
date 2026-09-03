@@ -4,11 +4,11 @@ import {
   MessageSquare,
   Pencil,
   Play,
-  Plus,
   RotateCcw,
   Trash2,
 } from "lucide-react";
 import { apagarDemanda, definirStatusDemanda } from "@/app/dashboard/actions";
+import { BotaoNovaDemanda } from "@/app/dashboard/_componentes/botao-nova-demanda";
 import { BlocoComentarios } from "@/app/dashboard/_componentes/bloco-comentarios";
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
@@ -53,10 +53,7 @@ export default async function PaginaDashboard({
               : "Suas demandas."}
           </p>
         </div>
-        <Link href="/dashboard/nova" className="btn btn-primary">
-          <Plus className="h-4 w-4" />
-          Nova demanda
-        </Link>
+        <BotaoNovaDemanda />
       </header>
 
       <nav className="mt-6 flex flex-wrap gap-1 border-b border-border pb-2 text-sm">

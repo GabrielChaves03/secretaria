@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DIFICULDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
 import type { EstadoDemanda } from "@/app/dashboard/actions";
 
@@ -13,13 +14,33 @@ type Props = {
   /** Quando presente, o formulário edita esta demanda em vez de criar. */
   demanda?: Demanda;
   rotuloEnvio: string;
+  /**
+   * Chamado ao salvar com sucesso. Se informado (contexto de modal), o
+   * formulário não navega — deixa o pai fechar/atualizar. Se ausente, o
+   * formulário volta para /dashboard.
+   */
+  aoConcluir?: () => void;
 };
 
-export function FormularioDemanda({ acao, demanda, rotuloEnvio }: Props) {
+export function FormularioDemanda({
+  acao,
+  demanda,
+  rotuloEnvio,
+  aoConcluir,
+}: Props) {
+  const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
     acao,
     undefined,
   );
+
+  const sucesso = !!estado && "ok" in estado && estado.ok;
+
+  useEffect(() => {
+    if (!sucesso) return;
+    if (aoConcluir) aoConcluir();
+    else router.push("/dashboard");
+  }, [sucesso, aoConcluir, router]);
 
   return (
     <form action={acaoForm} className="space-y-5">
@@ -34,6 +55,7 @@ export function FormularioDemanda({ acao, demanda, rotuloEnvio }: Props) {
           name="titulo"
           type="text"
           required
+          autoFocus
           defaultValue={demanda?.titulo ?? ""}
           className="campo"
         />
@@ -85,7 +107,7 @@ export function FormularioDemanda({ acao, demanda, rotuloEnvio }: Props) {
         </div>
       </div>
 
-      {estado?.erro && (
+      {estado && "erro" in estado && (
         <p className="text-sm text-danger">{estado.erro}</p>
       )}
 
@@ -93,9 +115,19 @@ export function FormularioDemanda({ acao, demanda, rotuloEnvio }: Props) {
         <button type="submit" disabled={pendente} className="btn btn-primary">
           {pendente ? "Salvando..." : rotuloEnvio}
         </button>
-        <Link href="/dashboard" className="btn btn-secondary">
-          Cancelar
-        </Link>
+        {aoConcluir ? (
+          <button
+            type="button"
+            onClick={aoConcluir}
+            className="btn btn-secondary"
+          >
+            Cancelar
+          </button>
+        ) : (
+          <Link href="/dashboard" className="btn btn-secondary">
+            Cancelar
+          </Link>
+        )}
       </div>
     </form>
   );

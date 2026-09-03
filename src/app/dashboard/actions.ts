@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requererUsuario } from "@/lib/auth";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { ehDificuldade, ehStatus } from "@/lib/demandas";
 
-export type EstadoDemanda = { erro: string } | undefined;
+export type EstadoDemanda = { erro: string } | { ok: true } | undefined;
 
 /** Extrai e normaliza os campos do formulário de demanda. */
 function lerCampos(formData: FormData) {
@@ -43,7 +42,7 @@ export async function criarDemanda(
   if (error) return { erro: error.message };
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  return { ok: true };
 }
 
 /**
@@ -76,7 +75,7 @@ export async function atualizarDemanda(
   if (error) return { erro: error.message };
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  return { ok: true };
 }
 
 /**
