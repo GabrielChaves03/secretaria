@@ -96,20 +96,16 @@ export async function definirStatusDemanda(formData: FormData) {
 }
 
 /**
- * Apaga uma demanda do usuário logado.
+ * Apaga uma demanda. Dono ou chefe — a RLS decide (migration 0007).
  */
 export async function apagarDemanda(formData: FormData) {
-  const usuario = await requererUsuario();
+  await requererUsuario();
   const id = String(formData.get("id") ?? "");
 
   if (!id) return;
 
   const supabase = await criarClienteServidor();
-  await supabase
-    .from("demandas")
-    .delete()
-    .eq("id", id)
-    .eq("usuario_id", usuario.id);
+  await supabase.from("demandas").delete().eq("id", id);
 
   revalidatePath("/dashboard");
 }
