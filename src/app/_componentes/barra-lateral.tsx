@@ -63,8 +63,8 @@ export function BarraLateral({
 
   return (
     <>
-      {/* --- Desktop: coluna à esquerda --- */}
-      <aside className="hidden shrink-0 flex-col border-r border-border bg-sidebar md:flex md:w-60">
+      {/* --- Desktop: coluna à esquerda, fixa em tela cheia --- */}
+      <aside className="hidden shrink-0 flex-col border-r border-border bg-sidebar md:flex md:sticky md:top-0 md:h-screen md:w-60 md:self-start md:overflow-y-auto">
         <div className="flex items-center gap-2 px-3 py-3">
           <span className="grid h-6 w-6 place-items-center rounded-[var(--radius-sm)] bg-accent text-[11px] font-semibold text-accent-foreground">
             S
@@ -103,7 +103,7 @@ export function BarraLateral({
       </aside>
 
       {/* --- Mobile: barra no topo --- */}
-      <header className="flex items-center gap-1 border-b border-border bg-sidebar px-2 py-1.5 md:hidden">
+      <header className="sticky top-0 z-40 flex items-center gap-1 border-b border-border bg-sidebar px-2 py-1.5 md:hidden">
         <Link
           href="/dashboard"
           className="flex items-center gap-2 px-2 py-1 text-sm font-semibold"
