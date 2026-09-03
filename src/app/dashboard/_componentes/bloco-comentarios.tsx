@@ -21,17 +21,14 @@ type Props = {
 export function BlocoComentarios({ demandaId, comentarios, usuarioId }: Props) {
   return (
     <div className="space-y-3">
-      <ul className="space-y-2">
+      <ul className="space-y-1.5">
         {comentarios.length === 0 && (
-          <li className="text-sm text-zinc-500">Nenhum comentário ainda.</li>
+          <li className="text-sm text-fg-tertiary">Nenhum comentário ainda.</li>
         )}
         {comentarios.map((c) => (
-          <li
-            key={c.id}
-            className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-          >
+          <li key={c.id} className="rounded-[var(--radius-sm)] bg-surface-hover px-3 py-2 text-sm">
             <p className="whitespace-pre-wrap">{c.texto}</p>
-            <p className="mt-1 text-xs text-zinc-400">
+            <p className="mt-1 text-xs text-fg-tertiary">
               {c.usuario_id === usuarioId ? "Você" : (c.autor_nome ?? "Alguém")}
               {" · "}
               {FMT_DATA_HORA.format(new Date(c.criado_em))}
@@ -47,12 +44,9 @@ export function BlocoComentarios({ demandaId, comentarios, usuarioId }: Props) {
           rows={2}
           required
           placeholder="Escreva um comentário..."
-          className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          className="campo resize-y"
         />
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <button type="submit" className="btn btn-secondary btn-sm">
           Comentar
         </button>
       </form>

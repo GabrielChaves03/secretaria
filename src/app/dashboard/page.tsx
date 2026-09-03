@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  Check,
+  MessageSquare,
+  Pencil,
+  Play,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { apagarDemanda, definirStatusDemanda } from "@/app/dashboard/actions";
 import { BlocoComentarios } from "@/app/dashboard/_componentes/bloco-comentarios";
 import { obterPerfil } from "@/lib/perfil-consultas";
@@ -6,12 +15,15 @@ import { listarDemandas } from "@/lib/demandas-consultas";
 import { listarComentariosPorDemanda } from "@/lib/comentarios-consultas";
 import {
   ehStatus,
+  PILL_DIFICULDADE,
+  PILL_STATUS,
   ROTULO_DIFICULDADE,
   ROTULO_STATUS,
   STATUS,
+  type Status,
 } from "@/lib/demandas";
 
-export const metadata = { title: "Painel" };
+export const metadata = { title: "Demandas" };
 
 const FMT_DATA = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
 
@@ -23,35 +35,31 @@ export default async function PaginaDashboard({
   const perfil = await obterPerfil();
   const { status: statusBruto } = await searchParams;
   const filtro = ehStatus(statusBruto) ? statusBruto : undefined;
+  const ehChefe = perfil.papel === "chefe";
 
   const demandas = await listarDemandas(filtro);
   const comentariosPorDemanda = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
   );
 
-  const ehChefe = perfil.papel === "chefe";
-
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-10">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {ehChefe ? "Todas as demandas" : "Minhas demandas"}
-          </h1>
-          <p className="text-sm text-zinc-500">
-            {perfil.nome ?? perfil.email}
-            {ehChefe && " · chefe"}
+          <h1 className="text-2xl font-semibold tracking-tight">Demandas</h1>
+          <p className="mt-0.5 text-sm text-fg-secondary">
+            {ehChefe
+              ? "Todas as demandas da equipe."
+              : "Suas demandas."}
           </p>
         </div>
-        <Link
-          href="/dashboard/nova"
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <Link href="/dashboard/nova" className="btn btn-primary">
+          <Plus className="h-4 w-4" />
           Nova demanda
         </Link>
-      </div>
+      </header>
 
-      <nav className="mt-4 flex flex-wrap gap-1 text-sm">
+      <nav className="mt-6 flex flex-wrap gap-1 border-b border-border pb-2 text-sm">
         <FiltroLink rotulo="Todas" href="/dashboard" ativo={!filtro} />
         {STATUS.map((s) => (
           <FiltroLink
@@ -63,9 +71,9 @@ export default async function PaginaDashboard({
         ))}
       </nav>
 
-      <ul className="mt-4 space-y-3">
+      <ul className="mt-4 space-y-2.5">
         {demandas.length === 0 && (
-          <li className="rounded-md border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          <li className="cartao px-5 py-10 text-center text-sm text-fg-tertiary">
             {filtro
               ? `Nenhuma demanda com status "${ROTULO_STATUS[filtro]}".`
               : "Nenhuma demanda cadastrada ainda."}
@@ -75,78 +83,86 @@ export default async function PaginaDashboard({
         {demandas.map((d) => {
           const comentarios = comentariosPorDemanda.get(d.id) ?? [];
           return (
-            <li
-              key={d.id}
-              className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800"
-            >
+            <li key={d.id} className="cartao px-4 py-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">{d.titulo}</p>
                   {ehChefe && (
-                    <p className="text-xs text-zinc-500">
-                      de {d.dono_nome ?? "—"}
-                    </p>
-                  )}
-                  {d.descricao && (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
-                      {d.descricao}
+                    <p className="mt-0.5 text-xs text-fg-tertiary">
+                      {d.dono_nome ?? "—"}
                     </p>
                   )}
                 </div>
-                <span className="shrink-0 rounded-full border border-zinc-300 px-2 py-0.5 text-xs dark:border-zinc-700">
+                <span className={PILL_STATUS[d.status]}>
                   {ROTULO_STATUS[d.status]}
                 </span>
               </div>
 
-              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-500">
-                <div>
-                  <dt className="inline">Dificuldade: </dt>
-                  <dd className="inline">{ROTULO_DIFICULDADE[d.dificuldade]}</dd>
-                </div>
-                <div>
-                  <dt className="inline">Entrega: </dt>
-                  <dd className="inline">
-                    {d.data_entrega
-                      ? FMT_DATA.format(new Date(`${d.data_entrega}T00:00:00`))
-                      : "—"}
-                  </dd>
-                </div>
-              </dl>
+              {d.descricao && (
+                <p className="mt-1.5 whitespace-pre-wrap text-sm text-fg-secondary">
+                  {d.descricao}
+                </p>
+              )}
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-fg-tertiary">
+                <span className={PILL_DIFICULDADE[d.dificuldade]}>
+                  {ROTULO_DIFICULDADE[d.dificuldade]}
+                </span>
+                <span>
+                  Entrega:{" "}
+                  {d.data_entrega
+                    ? FMT_DATA.format(new Date(`${d.data_entrega}T00:00:00`))
+                    : "sem data"}
+                </span>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {d.status !== "em_andamento" && (
                   <BotaoStatus
                     id={d.id}
                     status="em_andamento"
-                    rotulo="Em andamento"
+                    rotulo="Iniciar"
+                    Icone={Play}
                   />
                 )}
                 {d.status !== "concluida" && (
-                  <BotaoStatus id={d.id} status="concluida" rotulo="Concluir" />
+                  <BotaoStatus
+                    id={d.id}
+                    status="concluida"
+                    rotulo="Concluir"
+                    Icone={Check}
+                    destaque
+                  />
                 )}
                 {d.status !== "pendente" && (
-                  <BotaoStatus id={d.id} status="pendente" rotulo="Reabrir" />
+                  <BotaoStatus
+                    id={d.id}
+                    status="pendente"
+                    rotulo="Reabrir"
+                    Icone={RotateCcw}
+                  />
                 )}
                 <Link
                   href={`/dashboard/${d.id}/editar`}
-                  className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                  className="btn btn-ghost btn-sm"
                 >
+                  <Pencil className="h-3.5 w-3.5" />
                   Editar
                 </Link>
                 <form action={apagarDemanda}>
                   <input type="hidden" name="id" value={d.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-                  >
+                  <button type="submit" className="btn btn-ghost btn-sm text-danger">
+                    <Trash2 className="h-3.5 w-3.5" />
                     Apagar
                   </button>
                 </form>
               </div>
 
-              <details className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800/60">
-                <summary className="cursor-pointer text-sm text-zinc-600 dark:text-zinc-400">
-                  Comentários ({comentarios.length})
+              <details className="group mt-3 border-t border-border pt-2.5">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-fg-secondary transition-colors hover:text-foreground">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Comentários
+                  <span className="text-fg-tertiary">({comentarios.length})</span>
                 </summary>
                 <div className="mt-3">
                   <BlocoComentarios
@@ -176,11 +192,11 @@ function FiltroLink({
   return (
     <Link
       href={href}
-      className={
+      className={`rounded-[var(--radius-sm)] px-2.5 py-1 transition-colors ${
         ativo
-          ? "rounded-md bg-zinc-900 px-2.5 py-1 text-white dark:bg-white dark:text-zinc-900"
-          : "rounded-md border border-zinc-300 px-2.5 py-1 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-      }
+          ? "bg-surface-active font-medium text-foreground"
+          : "text-fg-secondary hover:bg-surface-hover hover:text-foreground"
+      }`}
     >
       {rotulo}
     </Link>
@@ -191,10 +207,14 @@ function BotaoStatus({
   id,
   status,
   rotulo,
+  Icone,
+  destaque,
 }: {
   id: string;
-  status: string;
+  status: Status;
   rotulo: string;
+  Icone: typeof Play;
+  destaque?: boolean;
 }) {
   return (
     <form action={definirStatusDemanda}>
@@ -202,8 +222,9 @@ function BotaoStatus({
       <input type="hidden" name="status" value={status} />
       <button
         type="submit"
-        className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+        className={`btn btn-sm ${destaque ? "btn-secondary" : "btn-ghost"}`}
       >
+        <Icone className="h-3.5 w-3.5" />
         {rotulo}
       </button>
     </form>

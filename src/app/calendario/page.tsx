@@ -1,14 +1,14 @@
-import Link from "next/link";
+import { CascaApp } from "@/app/_componentes/casca-app";
 import { CalendarioCliente } from "./_componentes/calendario-cliente";
 import type { EventoDemanda } from "./_componentes/calendario-demandas";
-import { obterPerfil } from "@/lib/perfil-consultas";
+import { requererUsuario } from "@/lib/auth";
 import { listarDemandas } from "@/lib/demandas-consultas";
-import { ROTULO_DIFICULDADE } from "@/lib/demandas";
+import { PILL_DIFICULDADE, ROTULO_DIFICULDADE } from "@/lib/demandas";
 
 export const metadata = { title: "Calendário" };
 
 export default async function PaginaCalendario() {
-  await obterPerfil(); // exige sessão; redireciona pro /login se não houver
+  await requererUsuario(); // exige sessão; redireciona pro /login se não houver
 
   const demandas = await listarDemandas();
   const eventos: EventoDemanda[] = demandas
@@ -21,33 +21,25 @@ export default async function PaginaCalendario() {
     }));
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 p-6">
-      <Link href="/dashboard" className="text-sm text-zinc-500 underline">
-        ← Voltar ao painel
-      </Link>
-      <h1 className="mt-4 text-xl font-semibold tracking-tight">Calendário</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        Demandas posicionadas pela data de entrega. Clique numa para editar.
-      </p>
+    <CascaApp>
+      <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-10">
+        <h1 className="text-2xl font-semibold tracking-tight">Calendário</h1>
+        <p className="mt-0.5 text-sm text-fg-secondary">
+          Demandas pela data de entrega. Clique numa para editar.
+        </p>
 
-      <ul className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
-        <li className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-[#16a34a]" />
-          {ROTULO_DIFICULDADE.facil}
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-[#ca8a04]" />
-          {ROTULO_DIFICULDADE.media}
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-[#dc2626]" />
-          {ROTULO_DIFICULDADE.dificil}
-        </li>
-      </ul>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(["facil", "media", "dificil"] as const).map((d) => (
+            <span key={d} className={PILL_DIFICULDADE[d]}>
+              {ROTULO_DIFICULDADE[d]}
+            </span>
+          ))}
+        </div>
 
-      <div className="mt-6">
-        <CalendarioCliente eventos={eventos} />
-      </div>
-    </main>
+        <div className="mt-6">
+          <CalendarioCliente eventos={eventos} />
+        </div>
+      </main>
+    </CascaApp>
   );
 }

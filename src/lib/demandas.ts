@@ -45,6 +45,20 @@ export const ROTULO_STATUS: Record<Status, string> = {
   concluida: "Concluída",
 };
 
+/** Classe da pílula (ver globals.css) por status. */
+export const PILL_STATUS: Record<Status, string> = {
+  pendente: "pill pill-gray",
+  em_andamento: "pill pill-blue",
+  concluida: "pill pill-green",
+};
+
+/** Classe da pílula por dificuldade — verde/amarelo/vermelho. */
+export const PILL_DIFICULDADE: Record<Dificuldade, string> = {
+  facil: "pill pill-green",
+  media: "pill pill-yellow",
+  dificil: "pill pill-red",
+};
+
 export function ehStatus(valor: string | null | undefined): valor is Status {
   return !!valor && (STATUS as readonly string[]).includes(valor);
 }

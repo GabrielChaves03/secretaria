@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { atualizarDemanda } from "@/app/dashboard/actions";
 import { FormularioDemanda } from "@/app/dashboard/_componentes/formulario-demanda";
@@ -23,11 +24,15 @@ export default async function PaginaEditarDemanda({
   const comentarios = await listarComentarios(demanda.id);
 
   return (
-    <main className="mx-auto w-full max-w-lg flex-1 p-6">
-      <Link href="/dashboard" className="text-sm text-zinc-500 underline">
-        ← Voltar
+    <main className="mx-auto w-full max-w-xl px-6 py-8 md:px-10">
+      <Link
+        href="/dashboard"
+        className="inline-flex items-center gap-1 text-sm text-fg-tertiary transition-colors hover:text-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Demandas
       </Link>
-      <h1 className="mt-4 text-xl font-semibold tracking-tight">
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">
         Editar demanda
       </h1>
 
@@ -39,8 +44,8 @@ export default async function PaginaEditarDemanda({
         />
       </div>
 
-      <section className="mt-10 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-        <h2 className="text-sm font-semibold tracking-tight">Comentários</h2>
+      <section className="mt-10 border-t border-border pt-6">
+        <h2 className="rotulo">Comentários</h2>
         <div className="mt-3">
           <BlocoComentarios
             demandaId={demanda.id}

@@ -11,8 +11,8 @@ export function FormularioLogin() {
 
   return (
     <form action={acao} className="space-y-4">
-      <div className="space-y-1">
-        <label htmlFor="email" className="text-sm font-medium">
+      <div className="space-y-1.5">
+        <label htmlFor="email" className="rotulo block">
           E-mail
         </label>
         <input
@@ -21,12 +21,12 @@ export function FormularioLogin() {
           type="email"
           autoComplete="email"
           required
-          className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          className="campo"
         />
       </div>
 
-      <div className="space-y-1">
-        <label htmlFor="senha" className="text-sm font-medium">
+      <div className="space-y-1.5">
+        <label htmlFor="senha" className="rotulo block">
           Senha
         </label>
         <input
@@ -35,18 +35,16 @@ export function FormularioLogin() {
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+          className="campo"
         />
       </div>
 
-      {estado?.erro && (
-        <p className="text-sm text-red-600 dark:text-red-400">{estado.erro}</p>
-      )}
+      {estado?.erro && <p className="text-sm text-danger">{estado.erro}</p>}
 
       <button
         type="submit"
         disabled={pendente}
-        className="w-full rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+        className="btn btn-primary w-full"
       >
         {pendente ? "Entrando..." : "Entrar"}
       </button>

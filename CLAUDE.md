@@ -3,18 +3,33 @@
 # Secretária — Gestão de Demandas Internas
 
 App interno para a equipe registrar e acompanhar demandas da empresa.
-Estado atual: **só a base de autenticação**. Nada de demandas ainda.
+No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínuo a cada `git push` em `main`.
 
 ## Stack
 
 | Camada        | Tecnologia                                              |
 | ------------- | ------------------------------------------------------- |
 | Framework     | Next.js 16 — App Router, TypeScript, `src/`            |
-| Estilo        | Tailwind CSS v4 (`@import "tailwindcss"` em globals.css)|
+| Estilo        | Tailwind CSS v4 + design system Notion-like (ver abaixo)|
+| Ícones        | `lucide-react`                                          |
+| Calendário    | `@fullcalendar/react` v6 (`ssr: false`)                 |
 | Banco + Auth  | Supabase (`@supabase/supabase-js` + `@supabase/ssr`)   |
 | Sessão        | Cookies gerenciados pelo `@supabase/ssr`               |
+| Deploy        | Netlify + `@netlify/plugin-nextjs` (`netlify.toml`, Node 22) |
 
-`node` 24, `npm`. Rode `npm run dev` para desenvolver, `npm run build` para checar tipos/produção.
+`node` 22+, `npm`. `npm run dev` para desenvolver, `npm run build` para checar tipos/produção.
+
+## Design system (globals.css)
+
+Inspirado no Notion: neutro quente, azul de acento `#2383e2`, raios pequenos (4–10px),
+sombras sutis, fonte Inter. Tokens em `:root` (+ bloco `@media (prefers-color-scheme: dark)`),
+expostos ao Tailwind via `@theme inline` → utilitários `bg-background`, `bg-sidebar`, `bg-surface`,
+`text-foreground`, `text-fg-secondary`/`fg-tertiary`, `border-border`, `bg-accent`, `text-danger`, etc.
+Classes de componente no próprio globals.css: `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-ghost`/`.btn-sm`,
+`.campo` (inputs), `.cartao`, `.rotulo`, e `.pill`/`.pill-{gray,blue,green,yellow,red}` (mapeadas em
+`PILL_STATUS` / `PILL_DIFICULDADE` em `src/lib/demandas.ts`).
+Casca da área logada: `src/app/_componentes/casca-app.tsx` (barra lateral + conteúdo), usada pelo
+`dashboard/layout.tsx` e pela página `/calendario`. Barra lateral: `_componentes/barra-lateral.tsx` (client).
 
 ## Variáveis de ambiente
 
@@ -40,8 +55,11 @@ src/
       server.ts                # criarClienteServidor() — Server Components / Actions
       proxy.ts                 # atualizarSessao() — usado pelo src/proxy.ts
   app/
-    layout.tsx
+    layout.tsx                 # fonte Inter + tokens do tema
     page.tsx                   # redireciona para /dashboard
+    _componentes/
+      casca-app.tsx            # server: barra lateral + <main> (área logada)
+      barra-lateral.tsx        # client: nav Notion-like, contador de notificações, sair
     auth/actions.ts            # Server Actions: entrar, cadastrar, sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
     calendario/
