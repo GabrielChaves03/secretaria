@@ -27,6 +27,8 @@ export type Demanda = {
   data_entrega: string | null;
   dificuldade: Dificuldade;
   status: Status;
+  /** Lista personalizada do quadro; `null` = colunas automáticas por status/prazo. */
+  lista_id: string | null;
   criado_em: string;
 };
 
@@ -47,8 +49,8 @@ export const ROTULO_STATUS: Record<Status, string> = {
 
 /** Classe da pílula (ver globals.css) por status. */
 export const PILL_STATUS: Record<Status, string> = {
-  pendente: "pill pill-gray",
-  em_andamento: "pill pill-blue",
+  pendente: "pill pill-blue",
+  em_andamento: "pill pill-yellow",
   concluida: "pill pill-green",
 };
 

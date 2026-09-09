@@ -9,9 +9,9 @@ import type { Dificuldade } from "@/lib/demandas";
 
 /** verde = fácil, amarelo = média, vermelho = difícil */
 const COR_DIFICULDADE: Record<Dificuldade, string> = {
-  facil: "#16a34a",
-  media: "#ca8a04",
-  dificil: "#dc2626",
+  facil: "#1db954",
+  media: "#e0a63a",
+  dificil: "#e5534b",
 };
 
 export type EventoDemanda = {

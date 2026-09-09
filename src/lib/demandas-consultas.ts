@@ -6,13 +6,15 @@ import type { Demanda, DemandaComDono, Status } from "@/lib/demandas";
 /**
  * Lista as demandas visíveis para o usuário logado, da mais recente para a
  * mais antiga. A RLS decide o recorte: funcionário vê só as suas, chefe vê
- * todas. `status` é o filtro opcional da UI.
+ * todas. `status` é o filtro opcional da UI e `busca` é o termo da barra de
+ * pesquisa (casa com título ou descrição, sem diferenciar maiúsculas).
  *
  * Também resolve o nome do dono de cada demanda (uma consulta extra a
  * `usuarios`) — relevante na visão do chefe.
  */
 export async function listarDemandas(
   status?: Status,
+  busca?: string,
 ): Promise<DemandaComDono[]> {
   const supabase = await criarClienteServidor();
 
@@ -23,6 +25,14 @@ export async function listarDemandas(
 
   if (status) {
     consulta = consulta.eq("status", status);
+  }
+
+  // Remove os caracteres que quebram a sintaxe do `.or()` do PostgREST.
+  const termo = busca?.replace(/[%,()*]/g, " ").trim();
+  if (termo) {
+    consulta = consulta.or(
+      `titulo.ilike.%${termo}%,descricao.ilike.%${termo}%`,
+    );
   }
 
   const { data, error } = await consulta;

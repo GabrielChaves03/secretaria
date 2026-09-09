@@ -1,18 +1,9 @@
 import "server-only";
 
 import { criarClienteServidor } from "@/lib/supabase/server";
+import type { Notificacao } from "@/lib/notificacoes";
 
-export type TipoNotificacao = "comentario" | "status" | "edicao";
-
-export type Notificacao = {
-  id: string;
-  usuario_id: string;
-  demanda_id: string | null;
-  tipo: TipoNotificacao;
-  descricao: string;
-  lida: boolean;
-  criado_em: string;
-};
+export type { Notificacao, TipoNotificacao } from "@/lib/notificacoes";
 
 /** Notificações do usuário logado, mais recentes primeiro (limite 100). */
 export async function listarNotificacoes(): Promise<Notificacao[]> {

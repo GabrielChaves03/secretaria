@@ -16,7 +16,7 @@ export function BotaoNovaDemanda() {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="btn btn-primary"
+        className="btn btn-primary brilho-hover"
       >
         <Plus className="h-4 w-4" />
         Nova demanda

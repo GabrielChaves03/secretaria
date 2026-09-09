@@ -1,229 +1,166 @@
 import Link from "next/link";
-import {
-  Check,
-  MessageSquare,
-  Pencil,
-  Play,
-  RotateCcw,
-  Trash2,
-} from "lucide-react";
-import { apagarDemanda, definirStatusDemanda } from "@/app/dashboard/actions";
+import { X } from "lucide-react";
 import { BotaoNovaDemanda } from "@/app/dashboard/_componentes/botao-nova-demanda";
-import { BlocoComentarios } from "@/app/dashboard/_componentes/bloco-comentarios";
+import {
+  QuadroDemandas,
+  type CartaoDemanda,
+  type ColunaQuadro,
+} from "@/app/dashboard/_componentes/quadro-demandas";
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
-import { listarComentariosPorDemanda } from "@/lib/comentarios-consultas";
+import { listarListas } from "@/lib/listas-consultas";
 import {
-  ehStatus,
-  PILL_DIFICULDADE,
-  PILL_STATUS,
-  ROTULO_DIFICULDADE,
-  ROTULO_STATUS,
-  STATUS,
-  type Status,
-} from "@/lib/demandas";
+  listarComentariosPorDemanda,
+  type Comentario,
+} from "@/lib/comentarios-consultas";
+import type { DemandaComDono } from "@/lib/demandas";
 
 export const metadata = { title: "Demandas" };
 
-const FMT_DATA = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
+/** Data de hoje no formato YYYY-MM-DD, no fuso de São Paulo. */
+function hojeISO() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+type ChaveAuto = "em_andamento" | "concluida" | "pendente";
+
+const COLUNAS_AUTO: {
+  chave: ChaveAuto;
+  titulo: string;
+  dot: string;
+  barra: string;
+}[] = [
+  {
+    chave: "em_andamento",
+    titulo: "Em andamento",
+    dot: "bg-[#e0a63a]",
+    barra: "coluna-em-andamento",
+  },
+  { chave: "concluida", titulo: "Concluídas", dot: "bg-accent", barra: "coluna-concluida" },
+  { chave: "pendente", titulo: "Pendentes", dot: "bg-danger", barra: "coluna-pendente" },
+];
+
+/**
+ * Coluna automática de uma demanda:
+ * - Concluídas: status "concluida";
+ * - Pendentes: não concluída (iniciada ou não) e com o prazo de entrega vencido;
+ * - Em andamento: as demais (sem prazo, ou prazo ainda no futuro).
+ */
+function colunaAutoDe(d: DemandaComDono, hoje: string): ChaveAuto {
+  if (d.status === "concluida") return "concluida";
+  if (d.data_entrega && d.data_entrega < hoje) return "pendente";
+  return "em_andamento";
+}
 
 export default async function PaginaDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const perfil = await obterPerfil();
-  const { status: statusBruto } = await searchParams;
-  const filtro = ehStatus(statusBruto) ? statusBruto : undefined;
+  const { q: qBruto } = await searchParams;
+  const busca = qBruto?.trim() || undefined;
   const ehChefe = perfil.papel === "chefe";
 
-  const demandas = await listarDemandas(filtro);
-  const comentariosPorDemanda = await listarComentariosPorDemanda(
+  const [demandas, listas] = await Promise.all([
+    listarDemandas(undefined, busca),
+    listarListas(),
+  ]);
+  const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
   );
 
+  const hoje = hojeISO();
+  const listasVisiveis = new Set(listas.map((l) => l.id));
+
+  // Colunas do quadro: 3 automáticas + uma por lista personalizada.
+  // `token` = chave de agrupamento/identidade; `destino` = o que `moverDemanda`
+  // recebe ao soltar (troca de status nas automáticas, lista_id nas listas).
+  const colunas: ColunaQuadro[] = [
+    ...COLUNAS_AUTO.map((c) => ({
+      token: `auto:${c.chave}`,
+      destino: `status:${c.chave}`,
+      titulo: c.titulo,
+      tipo: "auto" as const,
+      dot: c.dot,
+      barra: c.barra,
+    })),
+    ...listas.map((l) => ({
+      token: `lista:${l.id}`,
+      destino: `lista:${l.id}`,
+      titulo: l.nome,
+      tipo: "lista" as const,
+      listaId: l.id,
+    })),
+  ];
+
+  // Distribui as demandas pelas colunas.
+  const cardsPorColuna: Record<string, CartaoDemanda[]> = {};
+  for (const col of colunas) cardsPorColuna[col.token] = [];
+
+  for (const d of demandas) {
+    const naLista = d.lista_id && listasVisiveis.has(d.lista_id);
+    const tokenAtual = naLista
+      ? `lista:${d.lista_id}`
+      : `auto:${colunaAutoDe(d, hoje)}`;
+    const card: CartaoDemanda = {
+      ...d,
+      atrasada:
+        d.status !== "concluida" &&
+        !!d.data_entrega &&
+        d.data_entrega < hoje,
+      tokenAtual,
+    };
+    (cardsPorColuna[tokenAtual] ??= []).push(card);
+  }
+
+  const comentariosPorDemanda: Record<string, Comentario[]> =
+    Object.fromEntries(comentariosMapa);
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-8 md:px-10">
+    <main className="flex w-full flex-1 flex-col px-4 py-6 md:px-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Demandas</h1>
           <p className="mt-0.5 text-sm text-fg-secondary">
-            {ehChefe
-              ? "Todas as demandas da equipe."
-              : "Suas demandas."}
+            {ehChefe ? "Todas as demandas da equipe." : "Suas demandas."}
           </p>
         </div>
         <BotaoNovaDemanda />
       </header>
 
-      <nav className="mt-6 flex flex-wrap gap-1 border-b border-border pb-2 text-sm">
-        <FiltroLink rotulo="Todas" href="/dashboard" ativo={!filtro} />
-        {STATUS.map((s) => (
-          <FiltroLink
-            key={s}
-            rotulo={ROTULO_STATUS[s]}
-            href={`/dashboard?status=${s}`}
-            ativo={filtro === s}
-          />
-        ))}
-      </nav>
+      {busca && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[var(--radius)] bg-surface-hover px-3.5 py-2 text-sm">
+          <span className="text-fg-secondary">
+            Resultados para <span className="text-foreground">“{busca}”</span>
+            <span className="text-fg-tertiary"> · {demandas.length}</span>
+          </span>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 text-fg-tertiary transition-colors hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+            Limpar
+          </Link>
+        </div>
+      )}
 
-      <ul className="mt-4 space-y-2.5">
-        {demandas.length === 0 && (
-          <li className="cartao px-5 py-10 text-center text-sm text-fg-tertiary">
-            {filtro
-              ? `Nenhuma demanda com status "${ROTULO_STATUS[filtro]}".`
-              : "Nenhuma demanda cadastrada ainda."}
-          </li>
-        )}
-
-        {demandas.map((d) => {
-          const comentarios = comentariosPorDemanda.get(d.id) ?? [];
-          return (
-            <li key={d.id} className="cartao px-4 py-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium">{d.titulo}</p>
-                  {ehChefe && (
-                    <p className="mt-0.5 text-xs text-fg-tertiary">
-                      {d.dono_nome ?? "—"}
-                    </p>
-                  )}
-                </div>
-                <span className={PILL_STATUS[d.status]}>
-                  {ROTULO_STATUS[d.status]}
-                </span>
-              </div>
-
-              {d.descricao && (
-                <p className="mt-1.5 whitespace-pre-wrap text-sm text-fg-secondary">
-                  {d.descricao}
-                </p>
-              )}
-
-              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-fg-tertiary">
-                <span className={PILL_DIFICULDADE[d.dificuldade]}>
-                  {ROTULO_DIFICULDADE[d.dificuldade]}
-                </span>
-                <span>
-                  Entrega:{" "}
-                  {d.data_entrega
-                    ? FMT_DATA.format(new Date(`${d.data_entrega}T00:00:00`))
-                    : "sem data"}
-                </span>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                {d.status !== "em_andamento" && (
-                  <BotaoStatus
-                    id={d.id}
-                    status="em_andamento"
-                    rotulo="Iniciar"
-                    Icone={Play}
-                  />
-                )}
-                {d.status !== "concluida" && (
-                  <BotaoStatus
-                    id={d.id}
-                    status="concluida"
-                    rotulo="Concluir"
-                    Icone={Check}
-                    destaque
-                  />
-                )}
-                {d.status !== "pendente" && (
-                  <BotaoStatus
-                    id={d.id}
-                    status="pendente"
-                    rotulo="Reabrir"
-                    Icone={RotateCcw}
-                  />
-                )}
-                <Link
-                  href={`/dashboard/${d.id}/editar`}
-                  className="btn btn-ghost btn-sm"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Editar
-                </Link>
-                <form action={apagarDemanda}>
-                  <input type="hidden" name="id" value={d.id} />
-                  <button type="submit" className="btn btn-ghost btn-sm text-danger">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Apagar
-                  </button>
-                </form>
-              </div>
-
-              <details className="group mt-3 border-t border-border pt-2.5">
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-fg-secondary transition-colors hover:text-foreground">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Comentários
-                  <span className="text-fg-tertiary">({comentarios.length})</span>
-                </summary>
-                <div className="mt-3">
-                  <BlocoComentarios
-                    demandaId={d.id}
-                    comentarios={comentarios}
-                    usuarioId={perfil.id}
-                  />
-                </div>
-              </details>
-            </li>
-          );
-        })}
-      </ul>
+      {busca && demandas.length === 0 ? (
+        <div className="cartao mt-4 px-5 py-10 text-center text-sm text-fg-tertiary">
+          Nenhuma demanda encontrada para “{busca}”.
+        </div>
+      ) : (
+        <QuadroDemandas
+          colunas={colunas}
+          cardsPorColuna={cardsPorColuna}
+          comentariosPorDemanda={comentariosPorDemanda}
+          listas={listas.map((l) => ({ id: l.id, nome: l.nome }))}
+          ehChefe={ehChefe}
+          usuarioId={perfil.id}
+        />
+      )}
     </main>
-  );
-}
-
-function FiltroLink({
-  rotulo,
-  href,
-  ativo,
-}: {
-  rotulo: string;
-  href: string;
-  ativo: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-[var(--radius-sm)] px-2.5 py-1 transition-colors ${
-        ativo
-          ? "bg-surface-active font-medium text-foreground"
-          : "text-fg-secondary hover:bg-surface-hover hover:text-foreground"
-      }`}
-    >
-      {rotulo}
-    </Link>
-  );
-}
-
-function BotaoStatus({
-  id,
-  status,
-  rotulo,
-  Icone,
-  destaque,
-}: {
-  id: string;
-  status: Status;
-  rotulo: string;
-  Icone: typeof Play;
-  destaque?: boolean;
-}) {
-  return (
-    <form action={definirStatusDemanda}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="status" value={status} />
-      <button
-        type="submit"
-        className={`btn btn-sm ${destaque ? "btn-secondary" : "btn-ghost"}`}
-      >
-        <Icone className="h-3.5 w-3.5" />
-        {rotulo}
-      </button>
-    </form>
   );
 }

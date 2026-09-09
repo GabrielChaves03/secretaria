@@ -10,7 +10,7 @@ No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínu
 | Camada        | Tecnologia                                              |
 | ------------- | ------------------------------------------------------- |
 | Framework     | Next.js 16 — App Router, TypeScript, `src/`            |
-| Estilo        | Tailwind CSS v4 + design system Notion-like (ver abaixo)|
+| Estilo        | Tailwind CSS v4 + design system da Central de Agentes (ver abaixo)|
 | Ícones        | `lucide-react`                                          |
 | Calendário    | `@fullcalendar/react` v6 (`ssr: false`)                 |
 | Banco + Auth  | Supabase (`@supabase/supabase-js` + `@supabase/ssr`)   |
@@ -21,10 +21,12 @@ No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínu
 
 ## Design system (globals.css)
 
-Inspirado no Notion: neutro quente, azul de acento `#2383e2`, raios pequenos (4–10px),
-sombras sutis, fonte Inter. Tokens em `:root` (+ bloco `@media (prefers-color-scheme: dark)`),
-expostos ao Tailwind via `@theme inline` → utilitários `bg-background`, `bg-sidebar`, `bg-surface`,
-`text-foreground`, `text-fg-secondary`/`fg-tertiary`, `border-border`, `bg-accent`, `text-danger`, etc.
+Mesma identidade da **Central de Agentes**: tema escuro fixo (preto carvão `#0D0D0D`),
+verde de acento `#1DB954` (verde-hover `#169140`), raios pequenos (4–10px), bordas sutis
+(`#2A2A2A`), fontes Inter (texto) + IBM Plex Mono (`--font-mono`, rótulos). Tokens em `:root`
+(sem bloco de light mode — `color-scheme: dark`), expostos ao Tailwind via `@theme inline` →
+utilitários `bg-background`, `bg-sidebar`, `bg-surface`/`raised`/`overlay`, `text-foreground`,
+`text-fg-secondary`/`fg-tertiary`, `border-border`, `bg-accent`, `text-danger`, etc.
 Classes de componente no próprio globals.css: `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-ghost`/`.btn-sm`,
 `.campo` (inputs), `.cartao`, `.rotulo`, e `.pill`/`.pill-{gray,blue,green,yellow,red}` (mapeadas em
 `PILL_STATUS` / `PILL_DIFICULDADE` em `src/lib/demandas.ts`).
@@ -46,9 +48,12 @@ src/
   lib/
     auth.ts                    # requererUsuario() — checagem de sessão no servidor
     demandas.ts                # tipos, constantes e rótulos (client-safe, sem import de servidor)
-    demandas-consultas.ts      # listarDemandas() (c/ nome do dono) / obterDemanda() — server-only
+    demandas-consultas.ts      # listarDemandas() (c/ nome do dono, filtro status+busca) / obterDemanda() — server-only
+    listas.ts                  # tipo Lista (colunas personalizadas do quadro) — client-safe
+    listas-consultas.ts        # listarListas() (do dono; chefe vê todas) — server-only
     comentarios-consultas.ts   # tipo Comentario + listarComentarios[PorDemanda]() — server-only
     perfil-consultas.ts        # obterPerfil() — id/email/nome/papel do usuário logado — server-only
+    notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
     supabase/
       client.ts                # criarClienteNavegador() — Client Components
@@ -58,23 +63,33 @@ src/
     layout.tsx                 # fonte Inter + tokens do tema
     page.tsx                   # redireciona para /dashboard
     _componentes/
-      casca-app.tsx            # server: barra lateral + <main> (área logada)
-      barra-lateral.tsx        # client: nav Notion-like, contador de notificações, sair
+      casca-app.tsx            # server: barra do topo + barra lateral + <main> (área logada)
+      barra-topo.tsx           # client: logo + busca de demandas (?q=) + PainelNotificacoes + menu do perfil (sair)
+      painel-notificacoes.tsx  # client: sino + painel suspenso (lista, "apenas não lidas", marcar todas como lidas)
+      barra-lateral.tsx        # client: nav (Demandas, Calendário) — lateral no desktop, faixa no mobile
     auth/actions.ts            # Server Actions: entrar, cadastrar, sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
     calendario/
       page.tsx                 # calendário mensal (FullCalendar) das demandas por data_entrega
       _componentes/calendario-demandas.tsx  # client: FullCalendar + cor por dificuldade
     dashboard/
-      layout.tsx               # barra do topo: Calendário, Notificações (c/ contador), Sair
-      page.tsx                 # lista demandas (chefe vê todas) + filtro status + comentários recolhíveis
-      actions.ts               # Server Actions: criar/atualizar/status/apagar demanda, comentário, marcar notificações lidas
-      _componentes/            # formulario-demanda.tsx, bloco-comentarios.tsx, marcar-lidas.tsx
+      layout.tsx               # aplica a CascaApp (barra do topo + barra lateral)
+      page.tsx                 # server: busca dados, monta colunas (3 automáticas + 1 por lista) e passa pro <QuadroDemandas>
+                               #   coluna automática: concluída→Concluídas; não concluída c/ prazo vencido→Pendentes; senão→Em andamento
+                               #   demanda com lista_id vai pra essa lista (ignora a automática); "Iniciar" só no pendente inicial
+      actions.ts               # Server Actions: demanda (criar/atualizar/status/apagar), comentário, notificações lidas,
+                               #   lista (criarLista/renomearLista/apagarLista), moverDemanda(id, "status:<x>"|"lista:<id>")
+                               #   arrastar p/ coluna automática troca o status; p/ lista só seta lista_id
+      _componentes/            # quadro-demandas.tsx (client: colunas + drag-and-drop nativo + "Adicionar outra lista" + menu da lista;
+                               #   card mostra só título/descrição/dificuldade/prazo/botão de status — resto num menu de contexto
+                               #   aberto pelo lápis no hover ou botão direito: Editar / Comentário (modal) / Mover para / Excluir),
+                               #   formulario-demanda.tsx, bloco-comentarios.tsx, marcar-lidas.tsx, modal.tsx…
       nova/page.tsx            # criar demanda
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0006_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0008_). Aplicar: supabase-aplicar.bat
+                               #   0008 = tabela `listas` + coluna `demandas.lista_id` (ainda a aplicar)
 ```
 
 ## Convenções
@@ -123,6 +138,10 @@ supabase/
 
 ## Pendências
 
+- **Migration `0008` (listas + `demandas.lista_id`) ainda não aplicada** — rodar `supabase-aplicar.bat`.
+  Antes de aplicar, o quadro quebra ao carregar (coluna/tabela inexistente).
+- Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
+  "Mover para" no card.
 - SMTP próprio não configurado — o e-mail do Supabase é só o de desenvolvimento (rate limit baixo).
 - Sem versionamento git ainda.
 - Melhorias de UI/UX (a base é funcional, sem capricho visual).

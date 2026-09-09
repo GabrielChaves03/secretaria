@@ -142,6 +142,83 @@ export async function adicionarComentario(formData: FormData) {
 }
 
 /**
+ * Cria uma lista personalizada do quadro para o usuário logado.
+ */
+export async function criarLista(formData: FormData) {
+  const usuario = await requererUsuario();
+  const nome = String(formData.get("nome") ?? "").trim();
+
+  if (!nome) return;
+
+  const supabase = await criarClienteServidor();
+  await supabase.from("listas").insert({ usuario_id: usuario.id, nome });
+
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Renomeia uma lista. Dono ou chefe — a RLS decide.
+ */
+export async function renomearLista(formData: FormData) {
+  await requererUsuario();
+  const id = String(formData.get("id") ?? "");
+  const nome = String(formData.get("nome") ?? "").trim();
+
+  if (!id || !nome) return;
+
+  const supabase = await criarClienteServidor();
+  await supabase.from("listas").update({ nome }).eq("id", id);
+
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Apaga uma lista. Os cards dela voltam para o fluxo automático
+ * (demandas.lista_id vira null via ON DELETE SET NULL). Dono ou chefe.
+ */
+export async function apagarLista(formData: FormData) {
+  await requererUsuario();
+  const id = String(formData.get("id") ?? "");
+
+  if (!id) return;
+
+  const supabase = await criarClienteServidor();
+  await supabase.from("listas").delete().eq("id", id);
+
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Move uma demanda entre colunas do quadro:
+ * - `"status:<pendente|em_andamento|concluida>"` → troca o status e tira de
+ *   qualquer lista (volta pras 3 colunas automáticas);
+ * - `"lista:<uuid>"` → coloca na lista indicada, sem mexer no status.
+ */
+export async function moverDemanda(id: string, destino: string) {
+  await requererUsuario();
+  if (!id || !destino) return;
+
+  const supabase = await criarClienteServidor();
+
+  if (destino.startsWith("lista:")) {
+    const listaId = destino.slice("lista:".length);
+    if (!listaId) return;
+    await supabase.from("demandas").update({ lista_id: listaId }).eq("id", id);
+  } else if (destino.startsWith("status:")) {
+    const status = destino.slice("status:".length);
+    if (!ehStatus(status)) return;
+    await supabase
+      .from("demandas")
+      .update({ status, lista_id: null })
+      .eq("id", id);
+  } else {
+    return;
+  }
+
+  revalidatePath("/dashboard");
+}
+
+/**
  * Marca todas as notificações não lidas do usuário logado como lidas.
  * Chamada ao abrir a página de notificações.
  */

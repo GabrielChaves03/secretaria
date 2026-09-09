@@ -1,83 +1,67 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Design system — layout Notion, paleta azul sutil (slate frio),
-   azul de acento, raios pequenos, sombras sutis.
+   Design system — igual à Central de Agentes:
+   preto carvão, verde de acento (#1DB954), tema escuro,
+   raios pequenos, bordas sutis, Inter + IBM Plex Mono.
    ============================================================ */
 
 :root {
   /* superfícies */
-  --background: #ffffff;
-  --sidebar: #f5f7fa;
-  --surface: #ffffff;
-  --surface-hover: rgba(37, 66, 114, 0.06);
-  --surface-active: rgba(37, 66, 114, 0.10);
+  --background: #0d0d0d;
+  --sidebar: #131313;
+  --surface: #131313;
+  --raised: #1a1a1a;
+  --overlay: #212121;
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --surface-active: rgba(29, 185, 84, 0.12);
 
   /* texto */
-  --foreground: #1e2836;
-  --foreground-secondary: rgba(30, 40, 54, 0.64);
-  --foreground-tertiary: rgba(30, 40, 54, 0.44);
+  --foreground: #efefef;
+  --foreground-secondary: #9a9a9a;
+  --foreground-tertiary: #6a6a6a;
 
   /* linhas */
-  --border: rgba(30, 51, 92, 0.10);
-  --border-strong: rgba(30, 51, 92, 0.17);
+  --border: #2a2a2a;
+  --border-strong: #373737;
 
-  /* acento (azul) */
-  --accent: #2f7de1;
-  --accent-hover: #2367bf;
-  --accent-foreground: #ffffff;
-  --accent-subtle-bg: #eef4fc;
-  --accent-subtle-fg: #2367bf;
+  /* acento (verde) */
+  --accent: #1db954;
+  --accent-hover: #169140;
+  --accent-foreground: #0d0d0d;
+  --accent-subtle-bg: rgba(29, 185, 84, 0.12);
+  --accent-subtle-fg: #3fcb6e;
 
   /* estado */
-  --danger: #e5544b;
-  --danger-hover: #cf463d;
+  --danger: #e5534b;
+  --danger-hover: #d1443c;
+  --danger-foreground: #ffffff;
+  --warning: #c59b00;
+  --warning-hover: #b08a00;
+  --warning-foreground: #0d0d0d;
+  --success: #1db954;
+  --success-hover: #169140;
+  --success-foreground: #0d0d0d;
+  --dark: #212121;
+  --dark-hover: #2a2a2a;
+  --dark-foreground: #efefef;
 
   --radius: 6px;
   --radius-sm: 4px;
   --radius-lg: 10px;
 
-  --shadow-card: rgba(15, 15, 15, 0.04) 0px 2px 4px,
-    rgba(15, 15, 15, 0.03) 0px 1px 2px;
-  --shadow-pop: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px,
-    rgba(15, 15, 15, 0.1) 0px 6px 20px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #15191f;
-    --sidebar: #1a1f27;
-    --surface: #1a1f27;
-    --surface-hover: rgba(150, 180, 225, 0.07);
-    --surface-active: rgba(150, 180, 225, 0.11);
-
-    --foreground: rgba(230, 236, 245, 0.85);
-    --foreground-secondary: rgba(230, 236, 245, 0.5);
-    --foreground-tertiary: rgba(230, 236, 245, 0.36);
-
-    --border: rgba(150, 180, 225, 0.13);
-    --border-strong: rgba(150, 180, 225, 0.2);
-
-    --accent: #4a97e6;
-    --accent-hover: #63a8ec;
-    --accent-foreground: #ffffff;
-    --accent-subtle-bg: rgba(47, 125, 225, 0.18);
-    --accent-subtle-fg: #85bdf1;
-
-    --danger: #f16b62;
-    --danger-hover: #f5837b;
-
-    --shadow-card: rgba(0, 0, 0, 0.3) 0px 2px 4px,
-      rgba(0, 0, 0, 0.2) 0px 1px 2px;
-    --shadow-pop: rgba(0, 0, 0, 0.4) 0px 0px 0px 1px,
-      rgba(0, 0, 0, 0.5) 0px 6px 20px;
-  }
+  --shadow-card: rgba(0, 0, 0, 0.4) 0px 2px 4px,
+    rgba(0, 0, 0, 0.3) 0px 1px 2px;
+  --shadow-pop: rgba(0, 0, 0, 0.5) 0px 0px 0px 1px,
+    rgba(0, 0, 0, 0.6) 0px 6px 20px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-sidebar: var(--sidebar);
   --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
   --color-surface-hover: var(--surface-hover);
   --color-surface-active: var(--surface-active);
   --color-foreground: var(--foreground);
@@ -92,13 +76,24 @@
   --color-accent-subtle-fg: var(--accent-subtle-fg);
   --color-danger: var(--danger);
   --color-danger-hover: var(--danger-hover);
+  --color-warning: var(--warning);
+  --color-warning-hover: var(--warning-hover);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+  --color-success-foreground: var(--success-foreground);
+  --color-dark: var(--dark);
+  --color-dark-hover: var(--dark-hover);
+  --color-dark-foreground: var(--dark-foreground);
 
   --radius-sm: var(--radius-sm);
   --radius-DEFAULT: var(--radius);
   --radius-lg: var(--radius-lg);
 
-  --font-sans: var(--font-inter), ui-sans-serif, -apple-system,
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
 }
 
 * {
@@ -106,21 +101,41 @@
 }
 
 html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), ui-sans-serif, -apple-system,
+  font-family: var(--font-inter), "Inter", system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
 }
 
 ::selection {
-  background: rgba(47, 125, 225, 0.18);
+  background: rgba(29, 185, 84, 0.22);
+  color: var(--foreground);
+}
+
+/* Scrollbar fina, estilo Central de Agentes */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-tertiary);
 }
 
 @keyframes overlay-in {
@@ -162,23 +177,27 @@ body {
   white-space: nowrap;
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
 }
 .btn-primary {
   background: var(--accent);
   color: var(--accent-foreground);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(29, 185, 84, 0.8);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 .btn-secondary {
-  background: var(--surface);
-  color: var(--foreground);
-  box-shadow: inset 0 0 0 1px var(--border-strong);
+  background: var(--raised);
+  color: var(--foreground-secondary);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
+  background: var(--overlay);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 .btn-ghost {
   background: transparent;
@@ -189,12 +208,36 @@ body {
   color: var(--foreground);
 }
 .btn-danger {
-  background: transparent;
+  background: rgba(229, 83, 75, 0.1);
   color: var(--danger);
-  box-shadow: inset 0 0 0 1px var(--border-strong);
+  box-shadow: inset 0 0 0 1px rgba(229, 83, 75, 0.3);
 }
 .btn-danger:hover:not(:disabled) {
-  background: rgba(235, 87, 87, 0.08);
+  background: rgba(229, 83, 75, 0.18);
+}
+.btn-warning {
+  background: var(--warning);
+  color: var(--warning-foreground);
+  font-weight: 600;
+}
+.btn-warning:hover:not(:disabled) {
+  background: var(--warning-hover);
+}
+.btn-success {
+  background: var(--success);
+  color: var(--success-foreground);
+  font-weight: 600;
+}
+.btn-success:hover:not(:disabled) {
+  background: var(--success-hover);
+}
+.btn-dark {
+  background: var(--dark);
+  color: var(--dark-foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.btn-dark:hover:not(:disabled) {
+  background: var(--dark-hover);
 }
 .btn-sm {
   padding: 3px 8px;
@@ -204,7 +247,7 @@ body {
 .campo {
   width: 100%;
   border-radius: var(--radius-sm);
-  background: var(--background);
+  background: var(--raised);
   padding: 7px 10px;
   font-size: 14px;
   color: var(--foreground);
@@ -227,13 +270,73 @@ body {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
+/* ---- Card de demanda (quadro Kanban) — mais relevo que o .cartao ---- */
+.cartao-demanda {
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  box-shadow:
+    inset 0 0 0 1px var(--border),
+    var(--shadow-card);
+  transition:
+    background-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+}
+.cartao-demanda:hover {
+  background: var(--overlay);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px var(--border-strong),
+    0 8px 20px rgba(0, 0, 0, 0.45);
+}
+/* faixa de acento à esquerda, colorida por coluna */
+.cartao-demanda::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--cor-coluna, transparent);
+  opacity: 0.9;
+}
+.coluna-em-andamento {
+  --cor-coluna: #e0a63a;
+}
+.coluna-concluida {
+  --cor-coluna: var(--accent);
+}
+.coluna-pendente {
+  --cor-coluna: var(--danger);
+}
+
+/* ---- Realce verde no hover: borda + iluminação suave ----
+   Estilo dos cards da Central de Agentes. Aplicar em itens
+   interativos (abas da lateral, botão Nova demanda, sino e itens
+   de notificação). `:not(:disabled)` e ordem tardia no arquivo
+   garantem que vença o hover de `.btn-*`. */
+.brilho-hover {
+  transition:
+    background-color 0.14s ease,
+    box-shadow 0.14s ease,
+    color 0.14s ease,
+    transform 0.14s ease;
+}
+.brilho-hover:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 1px rgba(29, 185, 84, 0.35),
+    0 0 16px -8px rgba(29, 185, 84, 0.22);
+}
+
 .rotulo {
   font-size: 13px;
   font-weight: 500;
   color: var(--foreground-secondary);
 }
 
-/* ---- Pílulas de status/dificuldade (cores nomeadas do Notion) ---- */
+/* ---- Pílulas de status/dificuldade (tema escuro) ---- */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -246,47 +349,24 @@ body {
   white-space: nowrap;
 }
 .pill-gray {
-  background: #eef1f6;
-  color: #5b6577;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9a9a9a;
 }
 .pill-blue {
-  background: #e6effb;
-  color: #2f68b5;
+  background: rgba(75, 143, 232, 0.14);
+  color: #7fb2f0;
 }
 .pill-green {
-  background: #edf3ec;
-  color: #4a7c59;
+  background: rgba(29, 185, 84, 0.14);
+  color: #3fcb6e;
 }
 .pill-yellow {
-  background: #faf3dd;
-  color: #a67c1f;
+  background: rgba(217, 140, 0, 0.16);
+  color: #e0a63a;
 }
 .pill-red {
-  background: #fbecec;
-  color: #c4554d;
-}
-
-@media (prefers-color-scheme: dark) {
-  .pill-gray {
-    background: #2b323d;
-    color: #9aa6b6;
-  }
-  .pill-blue {
-    background: #1e3352;
-    color: #8fbdec;
-  }
-  .pill-green {
-    background: #243d30;
-    color: #8fc9a5;
-  }
-  .pill-yellow {
-    background: #3d3319;
-    color: #e5c07b;
-  }
-  .pill-red {
-    background: #43272a;
-    color: #f0a3a0;
-  }
+  background: rgba(229, 83, 75, 0.16);
+  color: #f0837b;
 }
 
 /* ---- FullCalendar (/calendario) alinhado ao tema ---- */

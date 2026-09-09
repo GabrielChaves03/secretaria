@@ -10,7 +10,7 @@ import type { EventoDemanda } from "./calendario-demandas";
 const CalendarioDemandas = dynamic(() => import("./calendario-demandas"), {
   ssr: false,
   loading: () => (
-    <p className="text-sm text-zinc-500">Carregando calendário...</p>
+    <p className="text-sm text-fg-tertiary">Carregando calendário...</p>
   ),
 });
 
