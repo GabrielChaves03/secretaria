@@ -1,14 +1,14 @@
 import { CascaApp } from "@/app/_componentes/casca-app";
 import { CalendarioCliente } from "./_componentes/calendario-cliente";
 import type { EventoDemanda } from "./_componentes/calendario-demandas";
-import { requererUsuario } from "@/lib/auth";
+import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
 import { PILL_DIFICULDADE, ROTULO_DIFICULDADE } from "@/lib/demandas";
 
 export const metadata = { title: "Calendário" };
 
 export default async function PaginaCalendario() {
-  await requererUsuario(); // exige sessão; redireciona pro /login se não houver
+  await requererEscritorio(); // exige sessão + escritório (senão vai pro /onboarding)
 
   const demandas = await listarDemandas();
   const eventos: EventoDemanda[] = demandas

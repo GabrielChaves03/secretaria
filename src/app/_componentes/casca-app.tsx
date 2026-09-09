@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { BarraTopo } from "@/app/_componentes/barra-topo";
 import { BarraLateral } from "@/app/_componentes/barra-lateral";
-import { obterPerfil } from "@/lib/perfil-consultas";
+import { requererEscritorio } from "@/lib/perfil-consultas";
 import {
   contarNaoLidas,
   listarNotificacoes,
@@ -10,11 +10,11 @@ import {
 /**
  * Casca da área logada: barra do topo (logo + busca + notificações + perfil),
  * barra lateral de navegação e o conteúdo. Usada pelo layout de /dashboard e
- * pela página /calendario.
+ * pela página /calendario. Exige escritório — sem um, manda para /onboarding.
  */
 export async function CascaApp({ children }: { children: ReactNode }) {
-  const [perfil, naoLidas, notificacoes] = await Promise.all([
-    obterPerfil(),
+  const perfil = await requererEscritorio();
+  const [naoLidas, notificacoes] = await Promise.all([
     contarNaoLidas(),
     listarNotificacoes(),
   ]);

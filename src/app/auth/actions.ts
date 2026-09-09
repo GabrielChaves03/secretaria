@@ -73,7 +73,8 @@ export async function cadastrar(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  // Conta nova ainda não tem escritório: vai escolher/criar um.
+  redirect("/onboarding");
 }
 
 /**

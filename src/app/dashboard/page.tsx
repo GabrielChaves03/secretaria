@@ -6,7 +6,7 @@ import {
   type CartaoDemanda,
   type ColunaQuadro,
 } from "@/app/dashboard/_componentes/quadro-demandas";
-import { obterPerfil } from "@/lib/perfil-consultas";
+import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
 import { listarListas } from "@/lib/listas-consultas";
 import {
@@ -59,7 +59,7 @@ export default async function PaginaDashboard({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const perfil = await obterPerfil();
+  const perfil = await requererEscritorio();
   const { q: qBruto } = await searchParams;
   const busca = qBruto?.trim() || undefined;
   const ehChefe = perfil.papel === "chefe";

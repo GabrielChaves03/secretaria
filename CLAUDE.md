@@ -44,7 +44,7 @@ Casca da área logada: `src/app/_componentes/casca-app.tsx` (barra lateral + con
 
 ```
 src/
-  proxy.ts                     # "middleware" do Next 16: renova sessão + protege /dashboard e /calendario
+  proxy.ts                     # "middleware" do Next 16: renova sessão + exige login em /dashboard /calendario /onboarding /escritorio
   lib/
     auth.ts                    # requererUsuario() — checagem de sessão no servidor
     demandas.ts                # tipos, constantes e rótulos (client-safe, sem import de servidor)
@@ -52,7 +52,9 @@ src/
     listas.ts                  # tipo Lista (colunas personalizadas do quadro) — client-safe
     listas-consultas.ts        # listarListas() (do dono; chefe vê todas) — server-only
     comentarios-consultas.ts   # tipo Comentario + listarComentarios[PorDemanda]() — server-only
-    perfil-consultas.ts        # obterPerfil() — id/email/nome/papel do usuário logado — server-only
+    perfil-consultas.ts        # obterPerfil() (id/email/nome/papel/escritorioId) + requererEscritorio() (sem escritório → /onboarding) — server-only
+    escritorios.ts             # tipos Escritorio / Membro — client-safe
+    escritorios-consultas.ts   # obterEscritorio() / listarMembros() — server-only
     notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
     supabase/
@@ -67,8 +69,11 @@ src/
       barra-topo.tsx           # client: logo + busca de demandas (?q=) + PainelNotificacoes + menu do perfil (sair)
       painel-notificacoes.tsx  # client: sino + painel suspenso (lista, "apenas não lidas", marcar todas como lidas)
       barra-lateral.tsx        # client: nav (Demandas, Calendário) — lateral no desktop, faixa no mobile
-    auth/actions.ts            # Server Actions: entrar, cadastrar, sair
+    auth/actions.ts            # Server Actions: entrar, cadastrar (→ /onboarding), sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
+    onboarding/                # page.tsx (sem escritório) + actions.ts (criarEscritorio/entrarEscritorio, via RPC) + formularios (client, abas criar/entrar)
+    escritorio/                # page.tsx (nome + código + membros, dentro da CascaApp) + actions.ts (sair/regenerar código/definir papel/remover membro)
+                               #   _componentes: codigo-escritorio.tsx (copiar/gerar), sair-escritorio.tsx (confirm)
     calendario/
       page.tsx                 # calendário mensal (FullCalendar) das demandas por data_entrega
       _componentes/calendario-demandas.tsx  # client: FullCalendar + cor por dificuldade
@@ -88,8 +93,10 @@ src/
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0008_). Aplicar: supabase-aplicar.bat
-                               #   0008 = tabela `listas` + coluna `demandas.lista_id` (ainda a aplicar)
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0009_). Aplicar: supabase-aplicar.bat
+                               #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
+                               #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
+                               #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
 ```
 
 ## Convenções
@@ -121,25 +128,34 @@ supabase/
 - Dados derivados de `auth.users` (perfil) são preenchidos por trigger `security definer`
   lendo `raw_user_meta_data` (ver `handle_new_user`).
 
-### Autenticação
+### Autenticação e multi-tenant
 
-- `proxy.ts` faz a checagem **otimista** (redireciona rota protegida / rota de auth).
-- A checagem **real** de cada página/ação protegida é `requererUsuario()` de `src/lib/auth.ts`.
-  Nunca dependa só do proxy.
+- `proxy.ts` faz a checagem **otimista** de sessão (redireciona rota protegida / rota de auth).
+- A checagem **real** de sessão é `requererUsuario()` (`src/lib/auth.ts`); a de **escritório** é
+  `requererEscritorio()` (`src/lib/perfil-consultas.ts`) — sem escritório → `/onboarding`.
+  A `CascaApp` já chama `requererEscritorio()`, então toda a área logada é coberta. Nunca dependa só do proxy.
+- **Multi-tenant:** cada `usuarios.escritorio_id` isola os dados. Toda RLS de `demandas`/`listas`/
+  `comentarios`/`notificacoes` filtra por `escritorio_id = (select meu_escritorio())`. `eh_chefe()`
+  passou a valer **dentro do escritório**. Inserts têm `escritorio_id` preenchido por trigger — o app
+  não precisa mandar. Trocar `papel`/`escritorio_id` só pelas RPCs (`criar_escritorio`,
+  `entrar_no_escritorio`, `sair_do_escritorio`, `definir_papel_membro`, `remover_membro`,
+  `regenerar_codigo`) — um trigger `usuarios_guard` barra alteração direta pelo cliente.
 - Cliente Supabase: `server.ts` no servidor, `client.ts` no navegador. Não misture.
 - Em `src/lib/supabase/server.ts` e `proxy.ts`, **não coloque lógica entre criar o
   cliente e o `auth.getUser()`** — pode causar logout aleatório.
 
 ## Estado
 
-- `.env.local` preenchido; migrations `0001` e `0002` aplicadas.
+- `.env.local` preenchido; migrations `0001`–`0009` aplicadas.
 - Confirmação de e-mail **desligada** (`mailer_autoconfirm = true`) — cadastro entra direto.
-- Auth e demandas (CRUD + filtro por status + RLS por dono) funcionando e testados.
+- **App é multi-empresa** (SaaS): cadastro público → `/onboarding` (criar escritório = vira chefe, ou
+  entrar com código = funcionário) → `/dashboard` isolado por escritório. Banco zerado na 0009.
+- Site publicado na Netlify **público** (visibilidade Private + "Previews only", ou Public).
+- `.github/workflows/keepalive.yml` pinga o site a cada 2 dias pro Supabase free não pausar.
 
 ## Pendências
 
-- **Migration `0008` (listas + `demandas.lista_id`) ainda não aplicada** — rodar `supabase-aplicar.bat`.
-  Antes de aplicar, o quadro quebra ao carregar (coluna/tabela inexistente).
+- Testar o isolamento multi-tenant com 2 contas / 2 escritórios (roteiro no fim da sessão de 09/09).
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
 - SMTP próprio não configurado — o e-mail do Supabase é só o de desenvolvimento (rate limit baixo).

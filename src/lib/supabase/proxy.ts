@@ -42,7 +42,10 @@ export async function atualizarSessao(request: NextRequest) {
 
   const caminho = request.nextUrl.pathname;
   const rotaProtegida =
-    caminho.startsWith("/dashboard") || caminho.startsWith("/calendario");
+    caminho.startsWith("/dashboard") ||
+    caminho.startsWith("/calendario") ||
+    caminho.startsWith("/onboarding") ||
+    caminho.startsWith("/escritorio");
   const rotaDeAuth = ROTAS_DE_AUTH.includes(caminho);
 
   if (!user && rotaProtegida) {
