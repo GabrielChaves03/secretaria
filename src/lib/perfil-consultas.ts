@@ -9,9 +9,12 @@ export type Perfil = {
   id: string;
   email: string;
   nome: string | null;
+  telefone: string | null;
   papel: Papel;
   /** Escritório ao qual o usuário pertence; `null` = ainda não escolheu (onboarding). */
   escritorioId: string | null;
+  /** Preferência pessoal: receber avisos no WhatsApp. */
+  whatsappAtivo: boolean;
 };
 
 /**
@@ -24,7 +27,7 @@ export async function obterPerfil(): Promise<Perfil> {
 
   const { data } = await supabase
     .from("usuarios")
-    .select("nome, papel, escritorio_id")
+    .select("nome, telefone, papel, escritorio_id, whatsapp_ativo")
     .eq("id", usuario.id)
     .maybeSingle();
 
@@ -32,8 +35,10 @@ export async function obterPerfil(): Promise<Perfil> {
     id: usuario.id,
     email: usuario.email ?? "",
     nome: (data?.nome as string | null) ?? null,
+    telefone: (data?.telefone as string | null) ?? null,
     papel: (data?.papel as Papel | undefined) ?? "funcionario",
     escritorioId: (data?.escritorio_id as string | null) ?? null,
+    whatsappAtivo: (data?.whatsapp_ativo as boolean | undefined) ?? true,
   };
 }
 

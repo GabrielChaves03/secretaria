@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, LogOut, Search } from "lucide-react";
+import { Building2, LogOut, Search, SlidersHorizontal } from "lucide-react";
 import { sair } from "@/app/auth/actions";
 import { PainelNotificacoes } from "@/app/_componentes/painel-notificacoes";
 import { ROTULO_PAPEL, type Papel } from "@/lib/demandas";
@@ -167,6 +167,16 @@ function MenuPerfil({
           >
             <Building2 className="h-4 w-4" />
             Escritório
+          </Link>
+
+          <Link
+            href="/ajustes"
+            role="menuitem"
+            onClick={() => setAberto(false)}
+            className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-sm text-fg-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Ajustes
           </Link>
 
           <form action={sair}>

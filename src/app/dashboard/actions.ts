@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requererUsuario } from "@/lib/auth";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { ehDificuldade, ehStatus } from "@/lib/demandas";
+import { ehDificuldade, ehStatus, ROTULO_STATUS, type Status } from "@/lib/demandas";
+import { avisarDono } from "@/lib/whatsapp-envio";
 
 export type EstadoDemanda = { erro: string } | { ok: true } | undefined;
 
@@ -53,7 +54,7 @@ export async function atualizarDemanda(
   _estadoAnterior: EstadoDemanda,
   formData: FormData,
 ): Promise<EstadoDemanda> {
-  await requererUsuario();
+  const usuario = await requererUsuario();
   const id = String(formData.get("id") ?? "");
   const { titulo, descricao, dataEntrega, dificuldade } = lerCampos(formData);
 
@@ -62,7 +63,7 @@ export async function atualizarDemanda(
   if (!ehDificuldade(dificuldade)) return { erro: "Dificuldade inválida." };
 
   const supabase = await criarClienteServidor();
-  const { error } = await supabase
+  const { data: demanda, error } = await supabase
     .from("demandas")
     .update({
       titulo,
@@ -70,9 +71,20 @@ export async function atualizarDemanda(
       data_entrega: dataEntrega || null,
       dificuldade,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("usuario_id")
+    .maybeSingle();
 
   if (error) return { erro: error.message };
+
+  const donoId = demanda?.usuario_id as string | undefined;
+  if (donoId && donoId !== usuario.id) {
+    await avisarDono({
+      donoId,
+      tipo: "status",
+      mensagem: `A demanda "${titulo}" foi editada.`,
+    });
+  }
 
   revalidatePath("/dashboard");
   return { ok: true };
@@ -83,14 +95,30 @@ export async function atualizarDemanda(
  * Usada pelos botões da listagem. Dono ou chefe — a RLS decide.
  */
 export async function definirStatusDemanda(formData: FormData) {
-  await requererUsuario();
+  const usuario = await requererUsuario();
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
 
   if (!id || !ehStatus(status)) return;
 
   const supabase = await criarClienteServidor();
-  await supabase.from("demandas").update({ status }).eq("id", id);
+  const { data: demanda } = await supabase
+    .from("demandas")
+    .update({ status })
+    .eq("id", id)
+    .select("usuario_id, titulo")
+    .maybeSingle();
+
+  const donoId = demanda?.usuario_id as string | undefined;
+  if (donoId && donoId !== usuario.id) {
+    await avisarDono({
+      donoId,
+      tipo: "status",
+      mensagem: `Status de "${demanda?.titulo}" mudou para ${
+        ROTULO_STATUS[status as Status]
+      }.`,
+    });
+  }
 
   revalidatePath("/dashboard");
 }
@@ -129,6 +157,7 @@ export async function adicionarComentario(formData: FormData) {
     .select("nome")
     .eq("id", usuario.id)
     .maybeSingle();
+  const autorNome = (perfil?.nome as string | null) ?? "Alguém";
 
   await supabase.from("comentarios").insert({
     demanda_id: demandaId,
@@ -136,6 +165,20 @@ export async function adicionarComentario(formData: FormData) {
     texto,
     autor_nome: (perfil?.nome as string | null) ?? null,
   });
+
+  const { data: demanda } = await supabase
+    .from("demandas")
+    .select("usuario_id, titulo")
+    .eq("id", demandaId)
+    .maybeSingle();
+  const donoId = demanda?.usuario_id as string | undefined;
+  if (donoId && donoId !== usuario.id) {
+    await avisarDono({
+      donoId,
+      tipo: "comentario",
+      mensagem: `${autorNome} comentou em "${demanda?.titulo}".`,
+    });
+  }
 
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/${demandaId}/editar`);

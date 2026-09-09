@@ -52,9 +52,12 @@ src/
     listas.ts                  # tipo Lista (colunas personalizadas do quadro) — client-safe
     listas-consultas.ts        # listarListas() (do dono; chefe vê todas) — server-only
     comentarios-consultas.ts   # tipo Comentario + listarComentarios[PorDemanda]() — server-only
-    perfil-consultas.ts        # obterPerfil() (id/email/nome/papel/escritorioId) + requererEscritorio() (sem escritório → /onboarding) — server-only
+    perfil-consultas.ts        # obterPerfil() (id/email/nome/telefone/papel/escritorioId/whatsappAtivo) + requererEscritorio() — server-only
     escritorios.ts             # tipos Escritorio / Membro — client-safe
     escritorios-consultas.ts   # obterEscritorio() / listarMembros() — server-only
+    whatsapp.ts                # tipos ConfigWhatsapp/TipoAvisoWhatsapp + normalizarTelefone() — client-safe
+    whatsapp-consultas.ts      # obterConfigWhatsapp() — server-only
+    whatsapp-envio.ts          # enviarMensagemWhatsapp() (POST genérico no gateway) + avisarDono() (silencioso) — server-only
     notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
     supabase/
@@ -74,6 +77,11 @@ src/
     onboarding/                # page.tsx (sem escritório) + actions.ts (criarEscritorio/entrarEscritorio, via RPC) + formularios (client, abas criar/entrar)
     escritorio/                # page.tsx (nome + código + membros, dentro da CascaApp) + actions.ts (sair/regenerar código/definir papel/remover membro)
                                #   _componentes: codigo-escritorio.tsx (copiar/gerar), sair-escritorio.tsx (confirm)
+    ajustes/                   # page.tsx (dentro da CascaApp) + actions.ts. Seções:
+                               #   "Reativar sistema" (só ADMIN_EMAILS): link p/ o painel do Supabase
+                               #   "Seu WhatsApp" (todos): edita telefone + toggle whatsapp_ativo
+                               #   "Integração do escritório" (só chefe): URL+token do gateway, 4 toggles de evento, botão "Enviar teste"
+                               #   _componentes: preferencia-whatsapp.tsx, integracao-whatsapp.tsx
     calendario/
       page.tsx                 # calendário mensal (FullCalendar) das demandas por data_entrega
       _componentes/calendario-demandas.tsx  # client: FullCalendar + cor por dificuldade
@@ -85,6 +93,7 @@ src/
       actions.ts               # Server Actions: demanda (criar/atualizar/status/apagar), comentário, notificações lidas,
                                #   lista (criarLista/renomearLista/apagarLista), moverDemanda(id, "status:<x>"|"lista:<id>")
                                #   arrastar p/ coluna automática troca o status; p/ lista só seta lista_id
+                               #   atualizar/status/comentário chamam avisarDono() (WhatsApp) quem ator ≠ dono da demanda
       _componentes/            # quadro-demandas.tsx (client: colunas + drag-and-drop nativo + "Adicionar outra lista" + menu da lista;
                                #   card mostra só título/descrição/dificuldade/prazo/botão de status — resto num menu de contexto
                                #   aberto pelo lápis no hover ou botão direito: Editar / Comentário (modal) / Mover para / Excluir),
@@ -93,10 +102,11 @@ src/
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0009_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0010_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
+                               #   0010 = WhatsApp: `usuarios.whatsapp_ativo` + tabela `escritorio_whatsapp` (ativo/url/token/4 toggles), RLS chefe.
 ```
 
 ## Convenções
@@ -146,16 +156,23 @@ supabase/
 
 ## Estado
 
-- `.env.local` preenchido; migrations `0001`–`0009` aplicadas.
+- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0010` aplicadas.
 - Confirmação de e-mail **desligada** (`mailer_autoconfirm = true`) — cadastro entra direto.
 - **App é multi-empresa** (SaaS): cadastro público → `/onboarding` (criar escritório = vira chefe, ou
-  entrar com código = funcionário) → `/dashboard` isolado por escritório. Banco zerado na 0009.
+  entrar com código = funcionário) → `/dashboard` isolado por escritório. Isolamento multi-tenant testado (09/09).
 - Site publicado na Netlify **público** (visibilidade Private + "Previews only", ou Public).
 - `.github/workflows/keepalive.yml` pinga o site a cada 2 dias pro Supabase free não pausar.
+- **WhatsApp (Fase 1 feita):** `/ajustes` com config por escritório (URL+token do gateway genérico) e
+  preferência pessoal. Dispara em **status/edição** e **comentário** (quando ator ≠ dono). Envio genérico
+  (`POST {url}` c/ `Authorization: Bearer {token}` e `{telefone, mensagem}`) — ajustar `whatsapp-envio.ts`
+  quando vier a spec da Nandu (redirectmais.com.br). Sem retry/fila (fire-and-forget com timeout 6s).
 
 ## Pendências
 
-- Testar o isolamento multi-tenant com 2 contas / 2 escritórios (roteiro no fim da sessão de 09/09).
+- **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
+  (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**.
+- Ajustar `whatsapp-envio.ts` ao formato real da Nandu (usuário vai trazer a doc/token).
+- `ADMIN_EMAILS` precisa ser setado também no painel da **Netlify** (env vars) pra a seção "Reativar sistema" aparecer em produção.
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
 - SMTP próprio não configurado — o e-mail do Supabase é só o de desenvolvimento (rate limit baixo).
