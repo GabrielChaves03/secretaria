@@ -167,6 +167,16 @@ supabase/
   (`POST {url}` c/ `Authorization: Bearer {token}` e `{telefone, mensagem}`) — ajustar `whatsapp-envio.ts`
   quando vier a spec da Nandu (redirectmais.com.br). Sem retry/fila (fire-and-forget com timeout 6s).
 
+## SMTP próprio (Supabase Auth)
+
+Declarativo via `supabase/config.toml` (gerado com `supabase init` + `supabase config pull --force` em
+11/09 pra puxar o estado real do projeto antes de editar — evita sobrescrever config de produção com
+defaults de dev). `[auth.email.smtp]` usa Gmail (`gabrielchaves0308@gmail.com` + senha de app), `pass`
+via `env(SUPABASE_AUTH_EMAIL_SMTP_PASS)` (nunca hardcoded no arquivo, que é versionado). Aplicar/alterar:
+rodar `supabase-configurar-smtp.bat` (pede a senha de app só no terminal, mostra `config diff` antes de
+aplicar `config push`). Rate limit de e-mail (`auth.rate_limit.email_sent`) deixado comentado de propósito
+(o valor padrão do template, 2/h, é de dev e ficaria baixo demais em produção).
+
 ## Pendências
 
 - **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
@@ -175,6 +185,6 @@ supabase/
 - `ADMIN_EMAILS` precisa ser setado também no painel da **Netlify** (env vars) pra a seção "Reativar sistema" aparecer em produção.
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
-- SMTP próprio não configurado — o e-mail do Supabase é só o de desenvolvimento (rate limit baixo).
-- Sem versionamento git ainda.
+- SMTP próprio: config pronta em `supabase/config.toml`, falta só rodar `supabase-configurar-smtp.bat`
+  (precisa da senha de app do Gmail) pra aplicar no projeto.
 - Melhorias de UI/UX (a base é funcional, sem capricho visual).

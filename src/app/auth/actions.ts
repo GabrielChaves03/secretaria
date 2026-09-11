@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { obterOrigem } from "@/lib/origem";
 
 export type EstadoFormulario = { erro: string } | undefined;
 
@@ -75,6 +76,63 @@ export async function cadastrar(
   revalidatePath("/", "layout");
   // Conta nova ainda não tem escritório: vai escolher/criar um.
   redirect("/onboarding");
+}
+
+/**
+ * Envia o e-mail de redefinição de senha. Sempre redireciona para a mesma
+ * tela de "enviado" (exista ou não o e-mail na base), pra não vazar quais
+ * e-mails têm conta.
+ */
+export async function solicitarRecuperacaoSenha(
+  _estadoAnterior: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { erro: "Informe o e-mail." };
+  }
+
+  const supabase = await criarClienteServidor();
+  const origem = await obterOrigem();
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origem}/auth/confirmar?next=/redefinir-senha`,
+  });
+
+  redirect("/esqueci-senha?enviado=1");
+}
+
+/**
+ * Define a nova senha. Só funciona dentro da sessão de recuperação criada
+ * por `/auth/confirmar` a partir do link do e-mail.
+ */
+export async function redefinirSenha(
+  _estadoAnterior: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const senha = String(formData.get("senha") ?? "");
+  const confirmarSenha = String(formData.get("confirmarSenha") ?? "");
+
+  if (senha.length < 8) {
+    return { erro: "A senha precisa ter ao menos 8 caracteres." };
+  }
+  if (senha !== confirmarSenha) {
+    return { erro: "As senhas não coincidem." };
+  }
+
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.auth.updateUser({ password: senha });
+
+  if (error) {
+    return {
+      erro:
+        "Não foi possível redefinir a senha. O link pode ter expirado — solicite um novo.",
+    };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
 
 /**

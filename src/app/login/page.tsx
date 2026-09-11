@@ -6,9 +6,9 @@ export const metadata = { title: "Entrar" };
 export default async function PaginaLogin({
   searchParams,
 }: {
-  searchParams: Promise<{ confirmar?: string }>;
+  searchParams: Promise<{ confirmar?: string; erro?: string }>;
 }) {
-  const { confirmar } = await searchParams;
+  const { confirmar, erro } = await searchParams;
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
@@ -31,9 +31,25 @@ export default async function PaginaLogin({
           </p>
         )}
 
+        {erro === "link_invalido" && (
+          <p className="mt-4 text-sm text-danger">
+            O link usado é inválido ou expirou. Solicite um novo em
+            &quot;Esqueci minha senha&quot;.
+          </p>
+        )}
+
         <div className="mt-6">
           <FormularioLogin />
         </div>
+
+        <p className="mt-3 text-sm text-fg-secondary">
+          <Link
+            href="/esqueci-senha"
+            className="font-medium text-accent hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
+        </p>
 
         <p className="mt-6 text-sm text-fg-secondary">
           Não tem conta?{" "}
