@@ -167,24 +167,39 @@ supabase/
   (`POST {url}` c/ `Authorization: Bearer {token}` e `{telefone, mensagem}`) — ajustar `whatsapp-envio.ts`
   quando vier a spec da Nandu (redirectmais.com.br). Sem retry/fila (fire-and-forget com timeout 6s).
 
-## SMTP próprio (Supabase Auth)
+## SMTP próprio + "esqueci minha senha" (Supabase Auth)
 
-Declarativo via `supabase/config.toml` (gerado com `supabase init` + `supabase config pull --force` em
-11/09 pra puxar o estado real do projeto antes de editar — evita sobrescrever config de produção com
+SMTP declarativo via `supabase/config.toml` (gerado com `supabase init` + `supabase config pull --force`
+em 11/09 pra puxar o estado real do projeto antes de editar — evita sobrescrever config de produção com
 defaults de dev). `[auth.email.smtp]` usa Gmail (`gabrielchaves0308@gmail.com` + senha de app), `pass`
 via `env(SUPABASE_AUTH_EMAIL_SMTP_PASS)` (nunca hardcoded no arquivo, que é versionado). Aplicar/alterar:
 rodar `supabase-configurar-smtp.bat` (pede a senha de app só no terminal, mostra `config diff` antes de
-aplicar `config push`). Rate limit de e-mail (`auth.rate_limit.email_sent`) deixado comentado de propósito
-(o valor padrão do template, 2/h, é de dev e ficaria baixo demais em produção).
+aplicar `config push --yes`). Rate limit de e-mail (`auth.rate_limit.email_sent`) deixado comentado de
+propósito (o valor padrão do template, 2/h, é de dev e ficaria baixo demais em produção).
+
+**Cuidado ao rodar `.bat` de config do Supabase:** `config push` pede confirmação campo a campo — o
+`--yes` precisa estar depois de `supabase config push` (não só no `npx --yes`), senão nada é aplicado
+mesmo sem erro aparente (aconteceu em 11/09, primeira tentativa não colou nada — sempre conferir com
+`supabase config diff` depois). **Corrigido e testado em produção em 11/09**: SMTP aplicado
+(`config diff` bate 100% no bloco `auth.email.smtp`) e fluxo de "esqueci a senha" funcionando ponta a
+ponta (e-mail chega via Gmail com o template customizado, link cai em `/redefinir-senha`, senha nova
+funciona).
+
+Fluxo de "esqueci minha senha" (11/09): `/esqueci-senha` (pede e-mail, chama `resetPasswordForEmail` via
+`solicitarRecuperacaoSenha` em `src/app/auth/actions.ts`) → e-mail usa template customizado
+(`supabase/templates/recovery.html`, `[auth.email.template.recovery]` no config.toml) linkando pra
+`{{ .SiteURL }}/auth/confirmar?token_hash=...&type=recovery&next=/redefinir-senha` → `src/app/auth/
+confirmar/route.ts` (Route Handler) faz `verifyOtp({type, token_hash})`, cria sessão via cookies e
+redireciona pra `next` → `/redefinir-senha` (só funciona com a sessão de recuperação ativa) chama
+`redefinirSenha` (`updateUser({password})`) e manda pro `/dashboard`. `src/lib/origem.ts` monta a URL
+absoluta (protocolo+host) a partir dos headers pra funcionar em prod e local sem hardcode. Link "Esqueci
+minha senha" adicionado em `/login`.
 
 ## Pendências
 
 - **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
   (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**.
 - Ajustar `whatsapp-envio.ts` ao formato real da Nandu (usuário vai trazer a doc/token).
-- `ADMIN_EMAILS` precisa ser setado também no painel da **Netlify** (env vars) pra a seção "Reativar sistema" aparecer em produção.
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
-- SMTP próprio: config pronta em `supabase/config.toml`, falta só rodar `supabase-configurar-smtp.bat`
-  (precisa da senha de app do Gmail) pra aplicar no projeto.
 - Melhorias de UI/UX (a base é funcional, sem capricho visual).
