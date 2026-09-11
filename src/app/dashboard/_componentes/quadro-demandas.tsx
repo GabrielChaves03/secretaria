@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Check,
   ChevronRight,
+  Inbox,
   MessageSquare,
   MoreVertical,
   Pencil,
@@ -284,7 +285,7 @@ function Coluna({
           : "shadow-[inset_0_0_0_1px_var(--border)]"
       }`}
     >
-      <div className="flex items-center gap-2 px-3.5 py-3">
+      <div className="flex items-center gap-2 border-b border-border/60 px-3.5 py-3">
         {coluna.dot && (
           <span className={`h-2 w-2 shrink-0 rounded-full ${coluna.dot}`} />
         )}
@@ -330,8 +331,15 @@ function Coluna({
 
       <ul className="flex flex-col gap-2.5 px-2.5 pb-2.5 md:max-h-[calc(100vh-13rem)] md:overflow-y-auto">
         {cards.length === 0 && (
-          <li className="rounded-[var(--radius)] border border-dashed border-border px-3 py-6 text-center text-xs text-fg-tertiary">
-            {arrastando ? "Solte aqui" : "Nada aqui."}
+          <li
+            className={`flex flex-col items-center gap-1.5 rounded-[var(--radius)] border border-dashed px-3 py-8 text-center text-xs transition-colors ${
+              arrastando
+                ? "border-accent/50 bg-accent-subtle-bg text-accent-subtle-fg"
+                : "border-border text-fg-tertiary"
+            }`}
+          >
+            <Inbox className="h-4 w-4" strokeWidth={1.5} />
+            {arrastando ? "Solte aqui" : "Nada por aqui ainda."}
           </li>
         )}
         {cards.map((d) => (

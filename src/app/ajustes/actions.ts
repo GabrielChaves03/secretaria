@@ -5,6 +5,7 @@ import { requererUsuario } from "@/lib/auth";
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { enviarMensagemWhatsapp } from "@/lib/whatsapp-envio";
+import { FUNDOS } from "@/lib/aparencia";
 
 export type EstadoAjuste = { erro: string } | { ok: string } | undefined;
 
@@ -29,6 +30,29 @@ export async function salvarPreferenciaWhatsapp(
 
   revalidatePath("/ajustes");
   return { ok: "Preferências salvas." };
+}
+
+/**
+ * Fundo de tela pessoal (estilo "capa" do Notion) — qualquer usuário escolhe
+ * o seu, entre as opções do catálogo (`src/lib/aparencia.ts`).
+ */
+export async function salvarAparencia(chave: string) {
+  const usuario = await requererUsuario();
+
+  const valida = FUNDOS.some((f) => f.chave === chave);
+  if (!valida) return { erro: "Imagem inválida." };
+
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ imagem_fundo: chave })
+    .eq("id", usuario.id);
+
+  if (error) return { erro: error.message };
+
+  // O fundo é lido no layout raiz — precisa invalidar além de /ajustes.
+  revalidatePath("/", "layout");
+  return { ok: "Fundo atualizado." };
 }
 
 /**

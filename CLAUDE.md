@@ -19,19 +19,40 @@ No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínu
 
 `node` 22+, `npm`. `npm run dev` para desenvolver, `npm run build` para checar tipos/produção.
 
-## Design system (globals.css)
+## Design system (globals.css) — redesign "Nitro" (11/09)
 
-Mesma identidade da **Central de Agentes**: tema escuro fixo (preto carvão `#0D0D0D`),
-verde de acento `#1DB954` (verde-hover `#169140`), raios pequenos (4–10px), bordas sutis
-(`#2A2A2A`), fontes Inter (texto) + IBM Plex Mono (`--font-mono`, rótulos). Tokens em `:root`
-(sem bloco de light mode — `color-scheme: dark`), expostos ao Tailwind via `@theme inline` →
-utilitários `bg-background`, `bg-sidebar`, `bg-surface`/`raised`/`overlay`, `text-foreground`,
-`text-fg-secondary`/`fg-tertiary`, `border-border`, `bg-accent`, `text-danger`, etc.
+Tema escuro fixo, carvão com leve viés frio (`#05060a`), verde de acento `#17C964`
+(hover `#12A852`, com `--accent-glow` pra focos/hovers), raios 5–13px, bordas frias
+(`#24272e`), fontes Inter (texto) + IBM Plex Mono (`--font-mono`, rótulos) + **Anton**
+(`--font-display`, só nos títulos grandes das telas de autenticação — nunca em texto
+corrido). Tokens em `:root` (sem bloco de light mode — `color-scheme: dark`), expostos
+ao Tailwind via `@theme inline` → utilitários `bg-background`, `bg-sidebar`,
+`bg-surface`/`raised`/`overlay`, `text-foreground`, `text-fg-secondary`/`fg-tertiary`,
+`border-border`, `bg-accent`, `text-danger`, etc.
 Classes de componente no próprio globals.css: `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-ghost`/`.btn-sm`,
-`.campo` (inputs), `.cartao`, `.rotulo`, e `.pill`/`.pill-{gray,blue,green,yellow,red}` (mapeadas em
-`PILL_STATUS` / `PILL_DIFICULDADE` em `src/lib/demandas.ts`).
+`.campo` (inputs), `.cartao`, `.rotulo`, `.pill`/`.pill-{gray,blue,green,yellow,red}` (mapeadas em
+`PILL_STATUS` / `PILL_DIFICULDADE` em `src/lib/demandas.ts`), e as novas `.marca*` (ícone +
+wordmark do Nitro, ver `_componentes/marca.tsx`) e `.tela-auth`/`.cartao-auth` (telas de login).
+`body` tem um **fundo de tela pessoal** (imagem pixel art + véu escuro + brilhos sutis + grão +
+scanlines) — ver seção "Aparência" abaixo; `bg-sidebar`/`bg-overlay` ganham `backdrop-filter`
+(vidro fosco) direto no CSS, sem precisar tocar nos componentes que já usam essas classes.
 Casca da área logada: `src/app/_componentes/casca-app.tsx` (barra lateral + conteúdo), usada pelo
 `dashboard/layout.tsx` e pela página `/calendario`. Barra lateral: `_componentes/barra-lateral.tsx` (client).
+
+### Aparência: fundo de tela pessoal (estilo capa do Notion)
+
+`usuarios.imagem_fundo` (migration `0011`, texto — guarda uma **chave**, não a URL) — cada
+usuário escolhe o próprio fundo em **Ajustes → Aparência** (`_componentes/escolher-fundo.tsx`,
+clique já aplica, sem botão salvar). Catálogo em `src/lib/aparencia.ts` (client-safe: chave +
+rótulo + arquivo em `public/fundos/`) — pra adicionar uma imagem nova: solta o arquivo em
+`public/fundos/` e acrescenta uma entrada no array `FUNDOS`. `src/lib/aparencia-consultas.ts`
+(server-only) resolve a chave do usuário logado pra URL, com fallback pro padrão (sem sessão
+ou chave inválida). O `RootLayout` (`layout.tsx`) busca essa URL e injeta como custom property
+(`style={{ "--fundo-imagem": ... }}` no `<body>`); `globals.css` usa
+`var(--fundo-imagem, url(padrão))` no background do `body` — assim o mesmo véu escuro/brilhos
+já definidos no CSS se aplicam a qualquer imagem escolhida, sem trabalho extra por imagem.
+Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o catálogo,
+`revalidatePath("/", "layout")` porque o fundo é lido no layout raiz).
 
 ## Variáveis de ambiente
 
@@ -78,10 +99,11 @@ src/
     escritorio/                # page.tsx (nome + código + membros, dentro da CascaApp) + actions.ts (sair/regenerar código/definir papel/remover membro)
                                #   _componentes: codigo-escritorio.tsx (copiar/gerar), sair-escritorio.tsx (confirm)
     ajustes/                   # page.tsx (dentro da CascaApp) + actions.ts. Seções:
+                               #   "Aparência" (todos): galeria de fundos de tela (clique já aplica) — salvarAparencia()
                                #   "Reativar sistema" (só ADMIN_EMAILS): link p/ o painel do Supabase
                                #   "Seu WhatsApp" (todos): edita telefone + toggle whatsapp_ativo
                                #   "Integração do escritório" (só chefe): URL+token do gateway, 4 toggles de evento, botão "Enviar teste"
-                               #   _componentes: preferencia-whatsapp.tsx, integracao-whatsapp.tsx
+                               #   _componentes: escolher-fundo.tsx, preferencia-whatsapp.tsx, integracao-whatsapp.tsx
     calendario/
       page.tsx                 # calendário mensal (FullCalendar) das demandas por data_entrega
       _componentes/calendario-demandas.tsx  # client: FullCalendar + cor por dificuldade
@@ -102,11 +124,16 @@ src/
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0010_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0011_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
                                #   0010 = WhatsApp: `usuarios.whatsapp_ativo` + tabela `escritorio_whatsapp` (ativo/url/token/4 toggles), RLS chefe.
+                               #   0011 = Aparência: `usuarios.imagem_fundo` (chave do catálogo em src/lib/aparencia.ts).
+  config.toml                  # config declarativo do projeto (SMTP, templates de e-mail) — supabase-configurar-smtp.bat
+  templates/recovery.html      # template do e-mail de redefinição de senha
+public/
+  fundos/                       # imagens do seletor de fundo (Ajustes → Aparência) — catálogo em src/lib/aparencia.ts
 ```
 
 ## Convenções
@@ -156,7 +183,10 @@ supabase/
 
 ## Estado
 
-- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0010` aplicadas.
+- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0011` aplicadas.
+- **Redesign "Nitro" (11/09):** marca (ícone + wordmark) trocou "Secretária" pelo logo do Nitro,
+  fundo de tela em pixel art (agora escolhível por usuário — ver "Aparência" acima), vidro fosco
+  na barra/menus, glow no acento, SMTP/templates de e-mail já cobertos noutra seção.
 - Confirmação de e-mail **desligada** (`mailer_autoconfirm = true`) — cadastro entra direto.
 - **App é multi-empresa** (SaaS): cadastro público → `/onboarding` (criar escritório = vira chefe, ou
   entrar com código = funcionário) → `/dashboard` isolado por escritório. Isolamento multi-tenant testado (09/09).

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Marca } from "@/app/_componentes/marca";
 import { FormularioEsqueciSenha } from "./formulario-esqueci-senha";
 
 export const metadata = { title: "Esqueci minha senha" };
@@ -11,19 +12,16 @@ export default async function PaginaEsqueciSenha({
   const { enviado } = await searchParams;
 
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-7 flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] bg-accent text-xs font-semibold text-accent-foreground">
-            S
-          </span>
-          <span className="text-sm font-semibold">Secretária</span>
+    <div className="tela-auth flex flex-1 items-center justify-center p-6">
+      <div className="cartao-auth w-full max-w-sm p-8">
+        <div className="mb-7">
+          <Marca />
         </div>
 
-        <h1 className="text-xl font-semibold tracking-tight">
-          Esqueci minha senha
+        <h1 className="font-display text-2xl tracking-wide text-foreground">
+          ESQUECI MINHA SENHA
         </h1>
-        <p className="mt-1 text-sm text-fg-secondary">
+        <p className="mt-1.5 text-sm text-fg-secondary">
           Informe seu e-mail e enviaremos um link pra redefinir a senha.
         </p>
 

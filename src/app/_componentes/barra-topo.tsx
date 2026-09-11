@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, LogOut, Search, SlidersHorizontal } from "lucide-react";
 import { sair } from "@/app/auth/actions";
+import { Marca } from "@/app/_componentes/marca";
 import { PainelNotificacoes } from "@/app/_componentes/painel-notificacoes";
 import { ROTULO_PAPEL, type Papel } from "@/lib/demandas";
 import type { Notificacao } from "@/lib/notificacoes";
@@ -29,15 +30,19 @@ export function BarraTopo({
 }) {
   return (
     <header className="sticky top-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-2.5 sm:gap-3 sm:px-3">
+      <div className="hidden shrink-0 sm:block">
+        <Marca href="/dashboard" tamanho="sm" />
+      </div>
       <Link
         href="/dashboard"
-        className="flex shrink-0 items-center gap-2"
         title="Secretária"
+        className="grid h-7 w-7 shrink-0 place-items-center sm:hidden"
       >
-        <span className="grid h-6 w-6 place-items-center rounded-[var(--radius-sm)] bg-accent text-[11px] font-semibold text-accent-foreground">
-          S
+        <span className="marca-icone" aria-hidden>
+          <span />
+          <span />
+          <span />
         </span>
-        <span className="hidden text-sm font-semibold sm:inline">Secretária</span>
       </Link>
 
       <Suspense fallback={<CampoBusca inicial="" />}>

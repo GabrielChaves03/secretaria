@@ -4,6 +4,7 @@ import { requererEscritorio } from "@/lib/perfil-consultas";
 import { obterConfigWhatsapp } from "@/lib/whatsapp-consultas";
 import { PreferenciaWhatsapp } from "./_componentes/preferencia-whatsapp";
 import { IntegracaoWhatsapp } from "./_componentes/integracao-whatsapp";
+import { EscolherFundo } from "./_componentes/escolher-fundo";
 
 export const metadata = { title: "Ajustes" };
 
@@ -52,6 +53,16 @@ export default async function PaginaAjustes() {
             </a>
           </section>
         )}
+
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold">Aparência</h2>
+          <p className="mt-1 text-sm text-fg-secondary">
+            Escolha o fundo de tela do seu Nitro. Só você vê essa escolha.
+          </p>
+          <div className="mt-4">
+            <EscolherFundo atual={perfil.imagemFundo} />
+          </div>
+        </section>
 
         <section className="mt-8">
           <h2 className="text-sm font-semibold">WhatsApp</h2>

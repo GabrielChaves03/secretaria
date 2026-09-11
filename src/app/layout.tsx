@@ -1,5 +1,7 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Mono, Anton } from "next/font/google";
+import { obterUrlFundoAtual } from "@/lib/aparencia-consultas";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,6 +17,16 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
+// Fonte de destaque (a condensada do logo do Nitro) — usada só nos títulos
+// grandes das telas de autenticação (classe utilitária `font-display`),
+// nunca no texto corrido.
+const anton = Anton({
+  variable: "--font-anton",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Gestão de Demandas Internas",
@@ -23,13 +35,20 @@ export const metadata: Metadata = {
   description: "Aplicação interna para gestão de demandas da empresa.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Fundo de tela é pessoal (usuários.imagem_fundo, escolhido em /ajustes) —
+  // roda em toda página, inclusive as públicas (sem sessão cai no padrão).
+  const urlFundo = await obterUrlFundoAtual();
+
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${plexMono.variable} h-full`}
+      className={`${inter.variable} ${plexMono.variable} ${anton.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
+      <body
+        className="flex min-h-full flex-col bg-background text-foreground"
+        style={{ "--fundo-imagem": `url(${urlFundo})` } as CSSProperties}
+      >
         {children}
       </body>
     </html>

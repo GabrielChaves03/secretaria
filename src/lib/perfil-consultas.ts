@@ -15,6 +15,8 @@ export type Perfil = {
   escritorioId: string | null;
   /** Preferência pessoal: receber avisos no WhatsApp. */
   whatsappAtivo: boolean;
+  /** Chave da imagem de fundo escolhida em /ajustes; `null` = padrão. */
+  imagemFundo: string | null;
 };
 
 /**
@@ -27,7 +29,7 @@ export async function obterPerfil(): Promise<Perfil> {
 
   const { data } = await supabase
     .from("usuarios")
-    .select("nome, telefone, papel, escritorio_id, whatsapp_ativo")
+    .select("nome, telefone, papel, escritorio_id, whatsapp_ativo, imagem_fundo")
     .eq("id", usuario.id)
     .maybeSingle();
 
@@ -39,6 +41,7 @@ export async function obterPerfil(): Promise<Perfil> {
     papel: (data?.papel as Papel | undefined) ?? "funcionario",
     escritorioId: (data?.escritorio_id as string | null) ?? null,
     whatsappAtivo: (data?.whatsapp_ativo as boolean | undefined) ?? true,
+    imagemFundo: (data?.imagem_fundo as string | null) ?? null,
   };
 }
 
