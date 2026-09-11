@@ -105,8 +105,14 @@ src/
                                #   "Integração do escritório" (só chefe): URL+token do gateway, 4 toggles de evento, botão "Enviar teste"
                                #   _componentes: escolher-fundo.tsx, preferencia-whatsapp.tsx, integracao-whatsapp.tsx
     calendario/
-      page.tsx                 # calendário mensal (FullCalendar) das demandas por data_entrega
-      _componentes/calendario-demandas.tsx  # client: FullCalendar + cor por dificuldade
+      page.tsx                 # calendário mensal (FullCalendar) das demandas (por data_entrega) + compromissos
+                               #   botão "Novo compromisso" (BotaoNovoCompromisso) abre modal de criação
+      actions.ts               # Server Actions: criarCompromisso/atualizarCompromisso/apagarCompromisso
+                               #   data+hora juntadas com fuso fixo -03:00 (Brasil não tem mais horário de verão)
+      _componentes/calendario-demandas.tsx  # client: FullCalendar, demanda (cor por dificuldade) + compromisso (azul,
+                               #   com hora) — clique em demanda navega pra editar, clique em compromisso abre
+                               #   modal de editar/excluir (mesmo FormularioCompromisso do criar)
+                               #   cartao-calendario (globals.css): cartão maior, opaco, cobrindo o fundo pixelado
     dashboard/
       layout.tsx               # aplica a CascaApp (barra do topo + barra lateral)
       page.tsx                 # server: busca dados, monta colunas (3 automáticas + 1 por lista) e passa pro <QuadroDemandas>
@@ -124,12 +130,14 @@ src/
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0011_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0012_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
                                #   0010 = WhatsApp: `usuarios.whatsapp_ativo` + tabela `escritorio_whatsapp` (ativo/url/token/4 toggles), RLS chefe.
                                #   0011 = Aparência: `usuarios.imagem_fundo` (chave do catálogo em src/lib/aparencia.ts).
+                               #   0012 = tabela `compromissos` (agenda pessoal — reuniões etc., separada de demandas;
+                               #          data_hora com hora, pro lembrete futuro por WhatsApp), RLS igual demandas.
   config.toml                  # config declarativo do projeto (SMTP, templates de e-mail) — supabase-configurar-smtp.bat
   templates/recovery.html      # template do e-mail de redefinição de senha
 public/
@@ -228,8 +236,15 @@ minha senha" adicionado em `/login`.
 ## Pendências
 
 - **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
-  (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**.
-- Ajustar `whatsapp-envio.ts` ao formato real da Nandu (usuário vai trazer a doc/token).
+  (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**; (c) lembrete
+  de **compromissos** (tabela `compromissos`, migration 0012 — já tem data+hora prontas pro lembrete).
+- Gateway de WhatsApp: usuário sem acesso ao **Redirect/Nandu** (redirectmais.com.br) ainda — quando destravar,
+  é só preencher URL+token em Ajustes → Integração do escritório, `whatsapp-envio.ts` já é genérico o
+  suficiente. **ManyChat descartado** pra esse uso: o canal WhatsApp dele roda sobre a API oficial da Meta
+  (não evita o custo que o usuário quer evitar) e só manda mensagem pra quem já iniciou conversa (modelo de
+  assinante/opt-in) — não serve pra notificação automática pra um número qualquer. Alternativa gratuita
+  discutida, ainda não implementada: self-hostar **Evolution API** (open source, mesmo formato de POST
+  genérico) como fallback enquanto o Redirect não libera acesso.
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
 - Melhorias de UI/UX (a base é funcional, sem capricho visual).

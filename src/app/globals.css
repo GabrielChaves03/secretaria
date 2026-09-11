@@ -518,7 +518,14 @@ header.bg-sidebar {
   box-shadow: var(--shadow-pop), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* ---- FullCalendar (/calendario) alinhado ao tema ---- */
+/* ---- FullCalendar (/calendario): cartão opaco no mesmo tom do resto do
+   app — só pra cobrir o fundo pixelado, sem destoar como o branco. ---- */
+.cartao-calendario {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 25%), var(--raised);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px 28px;
+  box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--border);
+}
 .fc {
   --fc-border-color: var(--border);
   --fc-page-bg-color: transparent;
@@ -531,27 +538,40 @@ header.bg-sidebar {
   --fc-button-hover-border-color: transparent;
   --fc-button-active-bg-color: var(--surface-active);
   --fc-button-active-border-color: transparent;
-  font-size: 13px;
+  font-size: 14.5px;
 }
 .fc .fc-toolbar-title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--foreground);
 }
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number {
+.fc .fc-col-header-cell-cushion {
+  padding: 8px 4px;
+  font-weight: 600;
   color: var(--foreground-secondary);
   text-decoration: none;
 }
+.fc .fc-daygrid-day-number {
+  padding: 8px;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.fc .fc-daygrid-day-frame {
+  min-height: 108px;
+}
 .fc .fc-button {
-  font-weight: 500;
+  font-weight: 600;
   box-shadow: none !important;
   text-transform: none;
-  padding: 4px 10px;
+  padding: 6px 14px;
 }
 .fc .fc-event {
   border-radius: 4px;
   font-weight: 500;
-  padding: 1px 4px;
+  padding: 2px 5px;
   cursor: pointer;
+}
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  font-weight: 700;
+  color: var(--accent-subtle-fg);
 }

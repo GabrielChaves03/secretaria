@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { EventoDemanda } from "./calendario-demandas";
+import type { Compromisso } from "@/lib/compromissos";
 
 /**
  * O FullCalendar só funciona no navegador. Carregamos ele com `ssr: false`
@@ -14,6 +15,12 @@ const CalendarioDemandas = dynamic(() => import("./calendario-demandas"), {
   ),
 });
 
-export function CalendarioCliente({ eventos }: { eventos: EventoDemanda[] }) {
-  return <CalendarioDemandas eventos={eventos} />;
+export function CalendarioCliente({
+  eventos,
+  compromissos,
+}: {
+  eventos: EventoDemanda[];
+  compromissos: Compromisso[];
+}) {
+  return <CalendarioDemandas eventos={eventos} compromissos={compromissos} />;
 }
