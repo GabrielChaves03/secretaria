@@ -450,13 +450,13 @@ header.bg-sidebar {
 .marca-icone {
   display: inline-flex;
   align-items: flex-end;
-  gap: 2.5px;
-  height: 22px;
+  gap: 3px;
+  height: 27px;
   flex-shrink: 0;
 }
 .marca-icone span {
   display: block;
-  width: 5px;
+  width: 6px;
   border-radius: 999px;
   background: var(--accent);
   transform: skewX(-16deg);
@@ -473,7 +473,7 @@ header.bg-sidebar {
 }
 .marca-nome {
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: 27px;
   line-height: 1;
   letter-spacing: 0.015em;
   background: linear-gradient(90deg, #f4f6f6 0%, #e9ebec 45%, #7b8286 100%);
@@ -482,14 +482,14 @@ header.bg-sidebar {
   color: transparent;
 }
 .marca-sm .marca-icone {
-  height: 17px;
-  gap: 2px;
+  height: 20px;
+  gap: 2.5px;
 }
 .marca-sm .marca-icone span {
-  width: 3.5px;
+  width: 4px;
 }
 .marca-sm .marca-nome {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 /* ---- Telas de autenticação: usam o mesmo fundo pixelado do `body` (acima),
