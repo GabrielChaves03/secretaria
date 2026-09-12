@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, ListTodo, type LucideIcon } from "lucide-react";
+import { CalendarDays, ListTodo, PlugZap, type LucideIcon } from "lucide-react";
 
 type ItemNav = {
   href: string;
@@ -26,6 +26,12 @@ const ITENS: ItemNav[] = [
     rotulo: "Calendário",
     Icone: CalendarDays,
     ativo: (c) => c.startsWith("/calendario"),
+  },
+  {
+    href: "/manychat",
+    rotulo: "ManyChat",
+    Icone: PlugZap,
+    ativo: (c) => c.startsWith("/manychat"),
   },
 ];
 

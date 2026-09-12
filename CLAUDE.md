@@ -60,6 +60,13 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` — só usada pelo motor do ManyChat (`src/lib/manychat/`, via
+  `src/lib/supabase/admin.ts`), que roda sem sessão de usuário (webhook/cron/drenador). **Nunca**
+  exposta ao navegador, nunca usada fora desses arquivos.
+- `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` — credenciais do
+  App do Meta for Developers usado pelo ManyChat (mesmo App do antigo `ig-dm-automacao`).
+- `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e as rotas
+  `/api/manychat/cron/*`.
 
 ## Estrutura
 
@@ -81,10 +88,21 @@ src/
     whatsapp-envio.ts          # enviarMensagemWhatsapp() (POST genérico no gateway) + avisarDono() (silencioso) — server-only
     notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
+    manychat-contas.ts          # tipo ContaInstagram + formatarDataHoraBR() (client-safe)
+    manychat-contas-consultas.ts # listarContas()/obterConta() (RLS) + conectarContaInstagram() (OAuth) — server-only
+    manychat-automacoes.ts       # tipos Automacao/AutomacaoInput + rotulosGatilho() (client-safe)
+    manychat-automacoes-consultas.ts # listarAutomacoes(contaId)/obterAutomacao() — server-only
+    manychat/                   # MOTOR do ManyChat — só service role, sem sessão de usuário
+                               #   (webhook/drenador/cron; painel e OAuth usam os arquivos acima,
+                               #   com RLS normal). instagram.ts (Graph API), instagram-accounts.ts
+                               #   (busca cross-tenant por ig_user_id, só o motor), contacts.ts,
+                               #   webhook-processing.ts, queue.ts, drain.ts, text-match.ts,
+                               #   webhook-signature.ts, cron-auth.ts
     supabase/
       client.ts                # criarClienteNavegador() — Client Components
       server.ts                # criarClienteServidor() — Server Components / Actions
       proxy.ts                 # atualizarSessao() — usado pelo src/proxy.ts
+      admin.ts                  # supabaseAdmin() — service role, só usado por lib/manychat/
   app/
     layout.tsx                 # fonte Inter + tokens do tema
     page.tsx                   # redireciona para /dashboard
@@ -92,7 +110,7 @@ src/
       casca-app.tsx            # server: barra do topo + barra lateral + <main> (área logada)
       barra-topo.tsx           # client: logo + busca de demandas (?q=) + PainelNotificacoes + menu do perfil (sair)
       painel-notificacoes.tsx  # client: sino + painel suspenso (lista, "apenas não lidas", marcar todas como lidas)
-      barra-lateral.tsx        # client: nav (Demandas, Calendário) — lateral no desktop, faixa no mobile
+      barra-lateral.tsx        # client: nav (Demandas, Calendário, ManyChat) — lateral no desktop, faixa no mobile
     auth/actions.ts            # Server Actions: entrar, cadastrar (→ /onboarding), sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
     onboarding/                # page.tsx (sem escritório) + actions.ts (criarEscritorio/entrarEscritorio, via RPC) + formularios (client, abas criar/entrar)
@@ -129,8 +147,24 @@ src/
       nova/page.tsx            # criar demanda
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)
+    manychat/                  # ManyChat — automação de DM do Instagram por palavra-chave (SEM IA),
+                               #   portado do app separado ig-dm-automacao (ver histórico da sessão de
+                               #   integração). Cada escritório conecta sua própria conta Instagram.
+      layout.tsx                 # aplica a CascaApp
+      page.tsx                   # lista as contas do escritório logado + "Conectar Instagram"
+      contas/[id]/
+        page.tsx                   # conexão (avatar, validade do token, reconectar) + KPIs + lista de automações
+        actions.ts                  # Server Actions: automação (criar/atualizar/apagar/ativar-pausar),
+                               #     sincronizarFollowups() (recria a sequência link→lembrete)
+        _componentes/                # formulario-automacao.tsx, lista-automacoes.tsx, seletor-midia.tsx
+        automations/novo|[automationId]/page.tsx
+  api/manychat/
+    webhook/route.ts            # GET (handshake da Meta) + POST (recebe evento, processa, drena a fila)
+    oauth/login|callback/route.ts # conectar Instagram — exige escritório; grava com sessão normal (RLS)
+    cron/drain|refresh-token/route.ts # batidos pelo pg_cron do Supabase; usam o motor (service role)
+    instagram/media/route.ts     # seletor de posts do formulário de automação
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0012_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0014_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
@@ -138,6 +172,13 @@ supabase/
                                #   0011 = Aparência: `usuarios.imagem_fundo` (chave do catálogo em src/lib/aparencia.ts).
                                #   0012 = tabela `compromissos` (agenda pessoal — reuniões etc., separada de demandas;
                                #          data_hora com hora, pro lembrete futuro por WhatsApp), RLS igual demandas.
+                               #   0013 = ManyChat: `instagram_accounts`/`automations`/`followups` — RLS por
+                               #          escritório de verdade (o app antigo não tinha nenhuma policy, só service
+                               #          role). Upsert de conta por `ig_user_id` de outro escritório falha sozinho
+                               #          (viola a policy de UPDATE) — não precisa checagem manual de "roubo" de conta.
+                               #   0014 = ManyChat: `contacts`/`queue`/`events` + RPC `claim_queue_batch` — só
+                               #          SELECT tem policy (INSERT/UPDATE são exclusivos da service role, sem
+                               #          sessão de usuário pra aplicar RLS de qualquer forma).
   config.toml                  # config declarativo do projeto (SMTP, templates de e-mail) — supabase-configurar-smtp.bat
   templates/recovery.html      # template do e-mail de redefinição de senha
 public/
@@ -191,7 +232,19 @@ public/
 
 ## Estado
 
-- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0011` aplicadas.
+- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0014` aplicadas.
+- **ManyChat em `/manychat` (12/09):** 1ª peça da integração "Central de Agentes dentro do
+  Secretária" a ser efetivamente lançada (o Roteirista Digital foi tentado antes e revertido por
+  depender de custo de API — ver histórico). Automação de DM do Instagram por regras/palavra-chave,
+  sem IA nenhuma — roda 100% de graça (Meta não cobra por esse uso). Código completo e testado
+  (`npm run build` limpo; isolamento multi-tenant confirmado simulando sessões de dois escritórios
+  reais, incluindo tentativa de "roubo" de conta já conectada por outro escritório — bloqueada pela
+  RLS de `instagram_accounts`, e tentativa de automação apontando pra conta de outro escritório —
+  bloqueada pela RLS de `automations`). **Ainda não publicado** (código local, não commitado) e
+  falta o corte de verdade: configurar `SUPABASE_SERVICE_ROLE_KEY`/`INSTAGRAM_APP_ID`/
+  `INSTAGRAM_APP_SECRET`/`INSTAGRAM_WEBHOOK_VERIFY_TOKEN`/`CRON_SECRET`, agendar `pg_cron`+`pg_net`
+  no Supabase do Secretária (mesmo padrão Vault do app antigo), e atualizar a Callback URL/Redirect
+  URI no painel do Meta for Developers pra apontar pro Secretária em vez do app antigo na Vercel.
 - **Redesign "Nitro" (11/09):** marca (ícone + wordmark) trocou "Secretária" pelo logo do Nitro,
   fundo de tela em pixel art (agora escolhível por usuário — ver "Aparência" acima), vidro fosco
   na barra/menus, glow no acento, SMTP/templates de e-mail já cobertos noutra seção.
