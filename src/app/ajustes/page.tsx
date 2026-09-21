@@ -2,6 +2,7 @@ import { ExternalLink, LifeBuoy } from "lucide-react";
 import { CascaApp } from "@/app/_componentes/casca-app";
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { obterConfigWhatsapp } from "@/lib/whatsapp-consultas";
+import { ehAdmin } from "@/lib/admin";
 import { PreferenciaWhatsapp } from "./_componentes/preferencia-whatsapp";
 import { IntegracaoWhatsapp } from "./_componentes/integracao-whatsapp";
 import { EscolherFundo } from "./_componentes/escolher-fundo";
@@ -10,14 +11,6 @@ export const metadata = { title: "Ajustes" };
 
 // ref do projeto Supabase — usado no link de reativação (só admin).
 const SUPABASE_PROJECT_REF = "fzxxlhqubtlgmrocmoxa";
-
-function ehAdmin(email: string): boolean {
-  const lista = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return lista.includes(email.toLowerCase());
-}
 
 export default async function PaginaAjustes() {
   const perfil = await requererEscritorio();

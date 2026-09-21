@@ -88,6 +88,10 @@ src/
     whatsapp-envio.ts          # enviarMensagemWhatsapp() (POST genérico no gateway) + avisarDono() (silencioso) — server-only
     notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
+    admin.ts                    # ehAdmin(email) — checa ADMIN_EMAILS (client-safe, só lê process.env);
+                               #   usado em ajustes/page.tsx e no Editor de Vídeos
+    video-pedidos.ts            # tipos VideoPedido/VideoPedidoAdmin, status/pílulas (client-safe)
+    video-pedidos-consultas.ts  # listarPedidosVideo() (RLS) / listarFilaGlobalAdmin() (service role, só admin) — server-only
     manychat-contas.ts          # tipo ContaInstagram + formatarDataHoraBR() (client-safe)
     manychat-contas-consultas.ts # listarContas()/obterConta() (RLS) + conectarContaInstagram() (OAuth) — server-only
     manychat-automacoes.ts       # tipos Automacao/AutomacaoInput + rotulosGatilho() (client-safe)
@@ -110,7 +114,7 @@ src/
       casca-app.tsx            # server: barra do topo + barra lateral + <main> (área logada)
       barra-topo.tsx           # client: logo + busca de demandas (?q=) + PainelNotificacoes + menu do perfil (sair)
       painel-notificacoes.tsx  # client: sino + painel suspenso (lista, "apenas não lidas", marcar todas como lidas)
-      barra-lateral.tsx        # client: nav (Demandas, Calendário, ManyChat) — lateral no desktop, faixa no mobile
+      barra-lateral.tsx        # client: nav (Demandas, Calendário, ManyChat, Editor de Vídeos) — lateral no desktop, faixa no mobile
     auth/actions.ts            # Server Actions: entrar, cadastrar (→ /onboarding), sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
     onboarding/                # page.tsx (sem escritório) + actions.ts (criarEscritorio/entrarEscritorio, via RPC) + formularios (client, abas criar/entrar)
@@ -158,6 +162,16 @@ src/
                                #     sincronizarFollowups() (recria a sequência link→lembrete)
         _componentes/                # formulario-automacao.tsx, lista-automacoes.tsx, seletor-midia.tsx
         automations/novo|[automationId]/page.tsx
+    editor-de-videos/          # fila manual de edição de vídeo — SEM automação (ver "Estado" abaixo)
+      layout.tsx                 # aplica a CascaApp
+      page.tsx                   # server: pedidos do escritório + (se admin) fila global
+      actions.ts                  # Server Actions: criarPedidoVideo (upload original + insert),
+                               #     apagarPedidoVideo (dono/chefe), e só-admin: marcarEmEdicao,
+                               #     concluirPedidoVideo (upload editado + status=concluido, via supabaseAdmin())
+      _componentes/                # formulario-envio.tsx (dropzone + instruções + botão de legenda
+                               #     reservado/desabilitado), lista-pedidos.tsx (histórico do
+                               #     escritório + baixar/apagar), fila-admin.tsx (só ADMIN_EMAILS:
+                               #     pedidos de todos os escritórios, baixar original, subir editado)
   api/manychat/
     webhook/route.ts            # GET (handshake da Meta) + POST (recebe evento, processa, drena a fila)
     oauth/login|callback/route.ts # conectar Instagram — exige escritório; grava com sessão normal (RLS)
@@ -179,6 +193,10 @@ supabase/
                                #   0014 = ManyChat: `contacts`/`queue`/`events` + RPC `claim_queue_batch` — só
                                #          SELECT tem policy (INSERT/UPDATE são exclusivos da service role, sem
                                #          sessão de usuário pra aplicar RLS de qualquer forma).
+                               #   0015 = Editor de Vídeos: tabela `video_pedidos` (fila manual, SEM policy de
+                               #          UPDATE — só o admin via service role muda status/anexa o editado) +
+                               #          bucket privado `videos-pedidos` (file_size_limit 2GiB, isolado por
+                               #          pasta = escritorio_id).
   config.toml                  # config declarativo do projeto (SMTP, templates de e-mail) — supabase-configurar-smtp.bat
   templates/recovery.html      # template do e-mail de redefinição de senha
 public/
@@ -245,6 +263,23 @@ public/
   `INSTAGRAM_APP_SECRET`/`INSTAGRAM_WEBHOOK_VERIFY_TOKEN`/`CRON_SECRET`, agendar `pg_cron`+`pg_net`
   no Supabase do Secretária (mesmo padrão Vault do app antigo), e atualizar a Callback URL/Redirect
   URI no painel do Meta for Developers pra apontar pro Secretária em vez do app antigo na Vercel.
+- **Editor de Vídeos em `/editor-de-videos` (21/09):** 2ª peça da integração "Central de
+  Agentes dentro do Secretária" (depois do ManyChat). **Fila manual, sem automação de
+  verdade**: o agente de edição (skills `video-use` + `HyperFrames`, projeto separado
+  "Video Editor Teste") hoje só roda pelo Claude Code local do admin, sem servidor — então
+  o app só guarda o pedido (vídeo bruto + instruções, upload direto pro Storage) com
+  status `pendente`; o admin (e-mail em `ADMIN_EMAILS`) vê uma seção extra "Fila de todos
+  os escritórios" na mesma página, baixa o original, edita manualmente e sobe o vídeo
+  editado de volta pelo próprio painel (`status` vira `concluido`, aparece um botão de
+  download pro escritório que pediu). Sem policy de UPDATE pra sessão normal de propósito
+  — só o admin muda o status, via `supabaseAdmin()` (service role) depois de checar
+  `ehAdmin()` no código (não é RLS). Botão de "estilo de legenda" só reservado/desabilitado
+  por enquanto — a legenda automática do agente ainda não foi validada. Bucket
+  `videos-pedidos` com `file_size_limit` de 2GiB setado direto na tabela `storage.buckets`
+  (migration 0015) — se o plano do Supabase tiver um teto menor, o upload falha com erro
+  do próprio Storage (checar em Studio → Settings → Storage nesse caso). Por pedido do
+  usuário, não há retenção: o escritório pode apagar o pedido (original + editado) a
+  qualquer momento depois de baixar, não existe limpeza automática ainda.
 - **Redesign "Nitro" (11/09):** marca (ícone + wordmark) trocou "Secretária" pelo logo do Nitro,
   fundo de tela em pixel art (agora escolhível por usuário — ver "Aparência" acima), vidro fosco
   na barra/menus, glow no acento, SMTP/templates de e-mail já cobertos noutra seção.
@@ -288,6 +323,12 @@ minha senha" adicionado em `/login`.
 
 ## Pendências
 
+- **Editor de Vídeos:** falta rodar a migration 0015 em produção (`supabase-aplicar.bat`);
+  estilo de legenda ainda não implementado (só o botão reservado) — quando o agente validar
+  a legenda automática, decidir os modelos/estilos e aí sim adicionar a coluna/lógica; hoje
+  o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
+  notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
+  se fizer sentido depois).
 - **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
   (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**; (c) lembrete
   de **compromissos** (tabela `compromissos`, migration 0012 — já tem data+hora prontas pro lembrete).
