@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Serviço Node separado (Baileys), fora do app Next.
+    "gateway-whatsapp/**",
   ]),
 ]);
 

@@ -9,6 +9,7 @@ import {
   CheckCheck,
   MessageSquare,
   Pencil,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { marcarNotificacoesLidas } from "@/app/dashboard/actions";
@@ -18,6 +19,7 @@ const ICONE: Record<TipoNotificacao, LucideIcon> = {
   comentario: MessageSquare,
   status: Check,
   edicao: Pencil,
+  atribuicao: UserPlus,
 };
 
 const FMT_DATA_HORA = new Intl.DateTimeFormat("pt-BR", {

@@ -5,6 +5,7 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DIFICULDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
 import type { EstadoDemanda } from "@/app/dashboard/actions";
+import type { Membro } from "@/lib/escritorios";
 
 type Props = {
   acao: (
@@ -20,6 +21,13 @@ type Props = {
    * formulário volta para /dashboard.
    */
   aoConcluir?: () => void;
+  /**
+   * Membros do escritório — só passado para o chefe. Quando presente, mostra
+   * o seletor "Responsável" (atribuir a demanda a outra pessoa).
+   */
+  membros?: Pick<Membro, "id" | "nome">[];
+  /** Usuário logado — responsável padrão ao criar. */
+  usuarioId?: string;
 };
 
 export function FormularioDemanda({
@@ -27,6 +35,8 @@ export function FormularioDemanda({
   demanda,
   rotuloEnvio,
   aoConcluir,
+  membros,
+  usuarioId,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -106,6 +116,30 @@ export function FormularioDemanda({
           </select>
         </div>
       </div>
+
+      {membros && membros.length > 1 && (
+        <div className="space-y-1.5">
+          <label htmlFor="responsavel_id" className="rotulo block">
+            Responsável
+          </label>
+          <select
+            id="responsavel_id"
+            name="responsavel_id"
+            defaultValue={demanda?.usuario_id ?? usuarioId ?? ""}
+            className="campo"
+          >
+            {membros.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome ?? "Sem nome"}
+                {m.id === usuarioId ? " (você)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-fg-tertiary">
+            O responsável é avisado no app e no WhatsApp.
+          </p>
+        </div>
+      )}
 
       {estado && "erro" in estado && (
         <p className="text-sm text-danger">{estado.erro}</p>

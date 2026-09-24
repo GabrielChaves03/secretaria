@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requererUsuario } from "@/lib/auth";
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { enviarMensagemWhatsapp } from "@/lib/whatsapp-envio";
+import { enviarMensagemWhatsapp, temGatewayPadrao } from "@/lib/whatsapp-envio";
+import { montarMensagemNitro } from "@/lib/whatsapp";
 import { FUNDOS } from "@/lib/aparencia";
 
 export type EstadoAjuste = { erro: string } | { ok: string } | undefined;
@@ -76,6 +77,7 @@ export async function salvarIntegracaoWhatsapp(
     notif_status: formData.get("notif_status") === "on",
     notif_comentario: formData.get("notif_comentario") === "on",
     notif_prazo: formData.get("notif_prazo") === "on",
+    notif_compromisso: formData.get("notif_compromisso") === "on",
     atualizado_em: new Date().toISOString(),
   };
 
@@ -106,13 +108,19 @@ export async function testarWhatsapp(
   const token = String(formData.get("token") ?? "").trim() || null;
   const telefone = String(formData.get("telefone_teste") ?? "").trim();
 
-  if (!endpoint_url) return { erro: "Preencha a URL do endpoint antes de testar." };
+  if (!endpoint_url && !temGatewayPadrao()) {
+    return { erro: "Preencha a URL do endpoint antes de testar." };
+  }
   if (!telefone) return { erro: "Informe um número para receber o teste." };
 
   const r = await enviarMensagemWhatsapp(
-    { ativo: true, endpoint_url, token },
+    { ativo: true, endpoint_url: endpoint_url || null, token },
     telefone,
-    "✅ Teste de integração do WhatsApp — Secretária. Se você recebeu isto, está funcionando.",
+    montarMensagemNitro({
+      nome: perfil.nome,
+      papel: perfil.papel,
+      corpo: "✅ Teste do Nitro: se você recebeu isto, os avisos de WhatsApp estão funcionando.",
+    }),
   );
 
   if (r.ok) {

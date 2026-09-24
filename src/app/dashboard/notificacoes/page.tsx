@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, Check, MessageSquare, Pencil } from "lucide-react";
+import { Bell, Check, MessageSquare, Pencil, UserPlus } from "lucide-react";
 import { MarcarLidas } from "@/app/dashboard/_componentes/marcar-lidas";
 import {
   listarNotificacoes,
@@ -17,6 +17,7 @@ const ICONE: Record<TipoNotificacao, typeof Bell> = {
   comentario: MessageSquare,
   status: Check,
   edicao: Pencil,
+  atribuicao: UserPlus,
 };
 
 export default async function PaginaNotificacoes() {

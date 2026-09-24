@@ -1,0 +1,19 @@
+{
+  "name": "gateway-whatsapp",
+  "version": "1.0.0",
+  "description": "Gateway de WhatsApp (Baileys) da Secretária/Nitro",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.12"
+  }
+}

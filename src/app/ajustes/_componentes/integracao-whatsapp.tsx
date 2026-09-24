@@ -17,12 +17,16 @@ const EVENTOS: { chave: TipoAvisoWhatsapp; campo: keyof ConfigWhatsapp }[] = [
   { chave: "status", campo: "notif_status" },
   { chave: "comentario", campo: "notif_comentario" },
   { chave: "prazo", campo: "notif_prazo" },
+  { chave: "compromisso", campo: "notif_compromisso" },
 ];
 
 export function IntegracaoWhatsapp({
   config,
+  gatewayPadrao,
 }: {
   config: ConfigWhatsapp | null;
+  /** O app tem o gateway do Nitro configurado — URL/token viram opcionais. */
+  gatewayPadrao: boolean;
 }) {
   const [url, setUrl] = useState(config?.endpoint_url ?? "");
   const [token, setToken] = useState(config?.token ?? "");
@@ -49,9 +53,16 @@ export function IntegracaoWhatsapp({
           Integração ativa
         </label>
 
+        {gatewayPadrao && (
+          <p className="rounded-[var(--radius)] bg-surface-hover px-3 py-2 text-xs text-fg-secondary">
+            As mensagens saem pelo WhatsApp do Nitro. Só preencha URL e token
+            abaixo se o escritório quiser usar um gateway próprio.
+          </p>
+        )}
+
         <div className="space-y-1.5">
           <label htmlFor="endpoint_url" className="rotulo block">
-            URL do endpoint (envio de mensagem)
+            URL do endpoint (envio de mensagem){gatewayPadrao ? " — opcional" : ""}
           </label>
           <input
             id="endpoint_url"
@@ -148,7 +159,8 @@ export function IntegracaoWhatsapp({
           <p className="text-sm text-danger">{estadoTeste.erro}</p>
         )}
         <p className="text-xs text-fg-tertiary">
-          O teste usa a URL e o token digitados acima (não precisa ter salvado).
+          O teste usa a URL e o token digitados acima (não precisa ter salvado)
+          {gatewayPadrao ? " — em branco, usa o WhatsApp do Nitro" : ""}.
         </p>
       </form>
     </div>

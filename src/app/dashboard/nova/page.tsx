@@ -2,12 +2,15 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { criarDemanda } from "@/app/dashboard/actions";
 import { FormularioDemanda } from "@/app/dashboard/_componentes/formulario-demanda";
-import { requererUsuario } from "@/lib/auth";
+import { requererEscritorio } from "@/lib/perfil-consultas";
+import { listarMembros } from "@/lib/escritorios-consultas";
 
 export const metadata = { title: "Nova demanda" };
 
 export default async function PaginaNovaDemanda() {
-  await requererUsuario();
+  const perfil = await requererEscritorio();
+  const membros =
+    perfil.papel === "chefe" ? await listarMembros() : undefined;
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-8 md:px-10">
@@ -23,7 +26,12 @@ export default async function PaginaNovaDemanda() {
       </h1>
 
       <div className="mt-6">
-        <FormularioDemanda acao={criarDemanda} rotuloEnvio="Criar demanda" />
+        <FormularioDemanda
+          acao={criarDemanda}
+          rotuloEnvio="Criar demanda"
+          membros={membros}
+          usuarioId={perfil.id}
+        />
       </div>
     </main>
   );

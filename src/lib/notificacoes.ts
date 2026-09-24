@@ -3,7 +3,7 @@
  * As consultas ao banco ficam em `notificacoes-consultas.ts` (server-only).
  */
 
-export type TipoNotificacao = "comentario" | "status" | "edicao";
+export type TipoNotificacao = "comentario" | "status" | "edicao" | "atribuicao";
 
 export type Notificacao = {
   id: string;
@@ -19,4 +19,5 @@ export const ROTULO_TIPO_NOTIFICACAO: Record<TipoNotificacao, string> = {
   comentario: "Comentário",
   status: "Status",
   edicao: "Edição",
+  atribuicao: "Atribuição",
 };

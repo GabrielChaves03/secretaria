@@ -27,7 +27,7 @@ jobs:
       - name: Acessar o site publicado
         run: |
           set -euo pipefail
-          URL="https://inspiring-genie-d3a1a7.netlify.app/login"
+          URL="https://secretaria-chaves5.vercel.app/login"
           echo "GET $URL"
           code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-all-errors --max-time 30 "$URL")
           echo "HTTP $code"

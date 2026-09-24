@@ -9,6 +9,7 @@ import {
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
 import { listarListas } from "@/lib/listas-consultas";
+import { listarMembros } from "@/lib/escritorios-consultas";
 import {
   listarComentariosPorDemanda,
   type Comentario,
@@ -64,9 +65,10 @@ export default async function PaginaDashboard({
   const busca = qBruto?.trim() || undefined;
   const ehChefe = perfil.papel === "chefe";
 
-  const [demandas, listas] = await Promise.all([
+  const [demandas, listas, membros] = await Promise.all([
     listarDemandas(undefined, busca),
     listarListas(),
+    ehChefe ? listarMembros() : Promise.resolve(undefined),
   ]);
   const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
@@ -128,7 +130,7 @@ export default async function PaginaDashboard({
             {ehChefe ? "Todas as demandas da equipe." : "Suas demandas."}
           </p>
         </div>
-        <BotaoNovaDemanda />
+        <BotaoNovaDemanda membros={membros} usuarioId={perfil.id} />
       </header>
 
       {busca && (

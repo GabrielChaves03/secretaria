@@ -2,6 +2,7 @@ import { ExternalLink, LifeBuoy } from "lucide-react";
 import { CascaApp } from "@/app/_componentes/casca-app";
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { obterConfigWhatsapp } from "@/lib/whatsapp-consultas";
+import { temGatewayPadrao } from "@/lib/whatsapp-envio";
 import { ehAdmin } from "@/lib/admin";
 import { PreferenciaWhatsapp } from "./_componentes/preferencia-whatsapp";
 import { IntegracaoWhatsapp } from "./_componentes/integracao-whatsapp";
@@ -75,10 +76,10 @@ export default async function PaginaAjustes() {
             <div className="mt-4 rounded-[var(--radius)] border border-border bg-surface p-4">
               <h3 className="text-sm font-medium">Integração do escritório</h3>
               <p className="mt-1 text-xs text-fg-tertiary">
-                Conecte o gateway de WhatsApp (ex.: Nandu) que vai entregar as
-                mensagens. Vale para todos deste escritório.
+                Liga os avisos de WhatsApp para a equipe e escolhe quando
+                avisar. Vale para todos deste escritório.
               </p>
-              <IntegracaoWhatsapp config={config} />
+              <IntegracaoWhatsapp config={config} gatewayPadrao={temGatewayPadrao()} />
             </div>
           )}
         </section>

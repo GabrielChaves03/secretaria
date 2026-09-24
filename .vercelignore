@@ -1,0 +1,5 @@
+# Serviço separado (Baileys) — roda fora da Vercel, nunca subir token/sessão
+gateway-whatsapp
+.env*
+supabase/.temp
+supabase/.branches

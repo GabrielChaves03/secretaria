@@ -7,6 +7,7 @@ import { BlocoComentarios } from "@/app/dashboard/_componentes/bloco-comentarios
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { obterDemanda } from "@/lib/demandas-consultas";
 import { listarComentarios } from "@/lib/comentarios-consultas";
+import { listarMembros } from "@/lib/escritorios-consultas";
 
 export const metadata = { title: "Editar demanda" };
 
@@ -21,7 +22,10 @@ export default async function PaginaEditarDemanda({
   const demanda = await obterDemanda(id);
   if (!demanda) notFound();
 
-  const comentarios = await listarComentarios(demanda.id);
+  const [comentarios, membros] = await Promise.all([
+    listarComentarios(demanda.id),
+    perfil.papel === "chefe" ? listarMembros() : Promise.resolve(undefined),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-8 md:px-10">
@@ -41,6 +45,8 @@ export default async function PaginaEditarDemanda({
           acao={atualizarDemanda}
           demanda={demanda}
           rotuloEnvio="Salvar alterações"
+          membros={membros}
+          usuarioId={perfil.id}
         />
       </div>
 

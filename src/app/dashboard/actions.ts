@@ -5,6 +5,7 @@ import { requererUsuario } from "@/lib/auth";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { ehDificuldade, ehStatus, ROTULO_STATUS, type Status } from "@/lib/demandas";
 import { avisarDono } from "@/lib/whatsapp-envio";
+import { formatarDiaMes } from "@/lib/whatsapp";
 
 export type EstadoDemanda = { erro: string } | { ok: true } | undefined;
 
@@ -15,32 +16,62 @@ function lerCampos(formData: FormData) {
     descricao: String(formData.get("descricao") ?? "").trim(),
     dataEntrega: String(formData.get("data_entrega") ?? "").trim(),
     dificuldade: String(formData.get("dificuldade") ?? "").trim(),
+    /** Só vem no formulário do chefe; vazio = não mexe no responsável. */
+    responsavelId: String(formData.get("responsavel_id") ?? "").trim(),
   };
 }
 
+/** Corpo do aviso de WhatsApp de demanda atribuída. */
+function corpoAtribuicao(titulo: string, dataEntrega: string, descricao: string) {
+  const linhas = [`📌 Você tem uma nova demanda: *${titulo}*`];
+  if (dataEntrega) linhas.push(`Prazo: ${formatarDiaMes(dataEntrega)}`);
+  if (descricao) {
+    linhas.push(descricao.length > 280 ? `${descricao.slice(0, 280)}…` : descricao);
+  }
+  return linhas.join("\n");
+}
+
 /**
- * Cria uma demanda para o usuário logado. Em sucesso, volta para `/dashboard`.
+ * Cria uma demanda. Por padrão é do usuário logado; o chefe pode escolher
+ * outro membro como responsável (`responsavel_id` — a RLS só aceita membro
+ * do mesmo escritório), e aí o responsável é avisado.
  */
 export async function criarDemanda(
   _estadoAnterior: EstadoDemanda,
   formData: FormData,
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
-  const { titulo, descricao, dataEntrega, dificuldade } = lerCampos(formData);
+  const { titulo, descricao, dataEntrega, dificuldade, responsavelId } =
+    lerCampos(formData);
 
   if (!titulo) return { erro: "Informe o título." };
   if (!ehDificuldade(dificuldade)) return { erro: "Dificuldade inválida." };
 
+  const donoId = responsavelId || usuario.id;
+
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.from("demandas").insert({
-    usuario_id: usuario.id,
-    titulo,
-    descricao: descricao || null,
-    data_entrega: dataEntrega || null,
-    dificuldade,
-  });
+  const { data: criada, error } = await supabase
+    .from("demandas")
+    .insert({
+      usuario_id: donoId,
+      titulo,
+      descricao: descricao || null,
+      data_entrega: dataEntrega || null,
+      dificuldade,
+    })
+    .select("id")
+    .single();
 
   if (error) return { erro: error.message };
+
+  if (donoId !== usuario.id) {
+    await avisarDono({
+      donoId,
+      tipo: "atribuicao",
+      corpo: corpoAtribuicao(titulo, dataEntrega, descricao),
+      demandaId: criada.id as string,
+    });
+  }
 
   revalidatePath("/dashboard");
   return { ok: true };
@@ -56,13 +87,22 @@ export async function atualizarDemanda(
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
   const id = String(formData.get("id") ?? "");
-  const { titulo, descricao, dataEntrega, dificuldade } = lerCampos(formData);
+  const { titulo, descricao, dataEntrega, dificuldade, responsavelId } =
+    lerCampos(formData);
 
   if (!id) return { erro: "Demanda não identificada." };
   if (!titulo) return { erro: "Informe o título." };
   if (!ehDificuldade(dificuldade)) return { erro: "Dificuldade inválida." };
 
   const supabase = await criarClienteServidor();
+
+  const { data: antes } = await supabase
+    .from("demandas")
+    .select("usuario_id")
+    .eq("id", id)
+    .maybeSingle();
+  const donoAnterior = antes?.usuario_id as string | undefined;
+
   const { data: demanda, error } = await supabase
     .from("demandas")
     .update({
@@ -70,6 +110,7 @@ export async function atualizarDemanda(
       descricao: descricao || null,
       data_entrega: dataEntrega || null,
       dificuldade,
+      ...(responsavelId ? { usuario_id: responsavelId } : {}),
     })
     .eq("id", id)
     .select("usuario_id")
@@ -79,10 +120,14 @@ export async function atualizarDemanda(
 
   const donoId = demanda?.usuario_id as string | undefined;
   if (donoId && donoId !== usuario.id) {
+    const reatribuida = donoId !== donoAnterior;
     await avisarDono({
       donoId,
-      tipo: "status",
-      mensagem: `A demanda "${titulo}" foi editada.`,
+      tipo: reatribuida ? "atribuicao" : "status",
+      corpo: reatribuida
+        ? corpoAtribuicao(titulo, dataEntrega, descricao)
+        : `✏️ A demanda *${titulo}* foi atualizada.`,
+      demandaId: id,
     });
   }
 
@@ -109,18 +154,26 @@ export async function definirStatusDemanda(formData: FormData) {
     .select("usuario_id, titulo")
     .maybeSingle();
 
-  const donoId = demanda?.usuario_id as string | undefined;
-  if (donoId && donoId !== usuario.id) {
-    await avisarDono({
-      donoId,
-      tipo: "status",
-      mensagem: `Status de "${demanda?.titulo}" mudou para ${
-        ROTULO_STATUS[status as Status]
-      }.`,
-    });
-  }
+  await avisarMudancaStatus(demanda, id, status, usuario.id);
 
   revalidatePath("/dashboard");
+}
+
+/** Aviso de WhatsApp de troca de status, se quem mudou não é o dono. */
+async function avisarMudancaStatus(
+  demanda: { usuario_id: unknown; titulo: unknown } | null,
+  id: string,
+  status: Status,
+  atorId: string,
+) {
+  const donoId = demanda?.usuario_id as string | undefined;
+  if (!donoId || donoId === atorId) return;
+  await avisarDono({
+    donoId,
+    tipo: "status",
+    corpo: `🔄 A demanda *${demanda?.titulo}* agora está *${ROTULO_STATUS[status]}*.`,
+    demandaId: id,
+  });
 }
 
 /**
@@ -173,10 +226,12 @@ export async function adicionarComentario(formData: FormData) {
     .maybeSingle();
   const donoId = demanda?.usuario_id as string | undefined;
   if (donoId && donoId !== usuario.id) {
+    const trecho = texto.length > 300 ? `${texto.slice(0, 300)}…` : texto;
     await avisarDono({
       donoId,
       tipo: "comentario",
-      mensagem: `${autorNome} comentou em "${demanda?.titulo}".`,
+      corpo: `💬 ${autorNome} comentou em *${demanda?.titulo}*:\n"${trecho}"`,
+      demandaId,
     });
   }
 
@@ -238,7 +293,7 @@ export async function apagarLista(formData: FormData) {
  * - `"lista:<uuid>"` → coloca na lista indicada, sem mexer no status.
  */
 export async function moverDemanda(id: string, destino: string) {
-  await requererUsuario();
+  const usuario = await requererUsuario();
   if (!id || !destino) return;
 
   const supabase = await criarClienteServidor();
@@ -250,10 +305,20 @@ export async function moverDemanda(id: string, destino: string) {
   } else if (destino.startsWith("status:")) {
     const status = destino.slice("status:".length);
     if (!ehStatus(status)) return;
-    await supabase
+    const { data: antes } = await supabase
+      .from("demandas")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    const { data: demanda } = await supabase
       .from("demandas")
       .update({ status, lista_id: null })
-      .eq("id", id);
+      .eq("id", id)
+      .select("usuario_id, titulo")
+      .maybeSingle();
+    if (antes?.status !== status) {
+      await avisarMudancaStatus(demanda, id, status, usuario.id);
+    }
   } else {
     return;
   }

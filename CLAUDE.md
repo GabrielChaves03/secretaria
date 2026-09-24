@@ -3,7 +3,8 @@
 # Secretária — Gestão de Demandas Internas
 
 App interno para a equipe registrar e acompanhar demandas da empresa.
-No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínuo a cada `git push` em `main`.
+No ar na **Vercel** (`https://secretaria-chaves5.vercel.app`), deploy contínuo a cada `git push` em `main`
+(migrado da Netlify em 24/09 — ver "Deploy: por que Vercel" abaixo).
 
 ## Stack
 
@@ -15,7 +16,8 @@ No ar na Netlify (`https://inspiring-genie-d3a1a7.netlify.app`), deploy contínu
 | Calendário    | `@fullcalendar/react` v6 (`ssr: false`)                 |
 | Banco + Auth  | Supabase (`@supabase/supabase-js` + `@supabase/ssr`)   |
 | Sessão        | Cookies gerenciados pelo `@supabase/ssr`               |
-| Deploy        | Netlify + `@netlify/plugin-nextjs` (`netlify.toml`, Node 22) |
+| Deploy        | Vercel (projeto `chaves5/secretaria`, Node 24) — `netlify.toml` é resto da época da Netlify |
+| WhatsApp      | `gateway-whatsapp/` — serviço Node separado com Baileys (não roda na Vercel) |
 
 `node` 22+, `npm`. `npm run dev` para desenvolver, `npm run build` para checar tipos/produção.
 
@@ -66,7 +68,11 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
 - `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` — credenciais do
   App do Meta for Developers usado pelo ManyChat (mesmo App do antigo `ig-dm-automacao`).
 - `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e as rotas
-  `/api/manychat/cron/*`.
+  `/api/manychat/cron/*` e `/api/whatsapp/cron` (no Vault do Supabase: `manychat_cron_secret`).
+- `WHATSAPP_GATEWAY_URL` / `WHATSAPP_GATEWAY_TOKEN` — gateway padrão do Nitro (`gateway-whatsapp/`,
+  `POST .../enviar`). Usado quando o escritório não preencheu URL própria em Ajustes. Localmente
+  aponta pra `http://localhost:3333/enviar`; em produção, falta hospedar o gateway (ver Pendências).
+  `SUPABASE_SERVICE_ROLE_KEY` também é usada pelo cron do WhatsApp (`whatsapp-agendados.ts`).
 
 ## Estrutura
 
@@ -85,7 +91,10 @@ src/
     escritorios-consultas.ts   # obterEscritorio() / listarMembros() — server-only
     whatsapp.ts                # tipos ConfigWhatsapp/TipoAvisoWhatsapp + normalizarTelefone() — client-safe
     whatsapp-consultas.ts      # obterConfigWhatsapp() — server-only
-    whatsapp-envio.ts          # enviarMensagemWhatsapp() (POST genérico no gateway) + avisarDono() (silencioso) — server-only
+    whatsapp-envio.ts          # enviarMensagemWhatsapp() (POST no gateway do escritório ou no padrão do env) +
+                               #   avisarDono() (silencioso, monta saudação Nitro + link) + temGatewayPadrao() — server-only
+    whatsapp-agendados.ts      # processarAvisosAgendados(): prazo (amanhã/hoje/ontem, ≥8h) + compromisso (≤30 min),
+                               #   service role, trava anti-duplicata em `whatsapp_avisos_enviados` — server-only
     notificacoes.ts            # tipos Notificacao/TipoNotificacao + rótulos (client-safe)
     notificacoes-consultas.ts  # listarNotificacoes() / contarNaoLidas() — server-only
     admin.ts                    # ehAdmin(email) — checa ADMIN_EMAILS (client-safe, só lê process.env);
@@ -177,8 +186,9 @@ src/
     oauth/login|callback/route.ts # conectar Instagram — exige escritório; grava com sessão normal (RLS)
     cron/drain|refresh-token/route.ts # batidos pelo pg_cron do Supabase; usam o motor (service role)
     instagram/media/route.ts     # seletor de posts do formulário de automação
+  api/whatsapp/cron/route.ts   # batido pelo pg_cron a cada 5 min (migration 0016/0017) → avisos agendados
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0014_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0017_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
@@ -197,6 +207,15 @@ supabase/
                                #          UPDATE — só o admin via service role muda status/anexa o editado) +
                                #          bucket privado `videos-pedidos` (file_size_limit 2GiB, isolado por
                                #          pasta = escritorio_id).
+                               #   0016 = WhatsApp Fase 2: chefe atribui demanda a membro do escritório (RLS de
+                               #          demandas + helper eh_membro_do_meu_escritorio), notificação 'atribuicao',
+                               #          escritorio_whatsapp.notif_compromisso, tabela whatsapp_avisos_enviados
+                               #          (sem policy — só service role) e pg_cron 'whatsapp-avisos-agendados'.
+                               #   0017 = reaponta esse cron pra URL da Vercel.
+gateway-whatsapp/              # serviço Node SEPARADO (Baileys): pareia um número por QR e expõe
+                               #   POST /enviar {telefone, mensagem} (Bearer GATEWAY_TOKEN), GET /status,
+                               #   GET /?token= (página do QR). Sessão em sessao/ (não versionada).
+                               #   iniciar-gateway.bat roda local. Fora do tsconfig/eslint/.vercelignore.
   config.toml                  # config declarativo do projeto (SMTP, templates de e-mail) — supabase-configurar-smtp.bat
   templates/recovery.html      # template do e-mail de redefinição de senha
 public/
@@ -250,7 +269,7 @@ public/
 
 ## Estado
 
-- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0014` aplicadas.
+- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0017` aplicadas.
 - **ManyChat em `/manychat` (12/09):** 1ª peça da integração "Central de Agentes dentro do
   Secretária" a ser efetivamente lançada (o Roteirista Digital foi tentado antes e revertido por
   depender de custo de API — ver histórico). Automação de DM do Instagram por regras/palavra-chave,
@@ -288,10 +307,16 @@ public/
   entrar com código = funcionário) → `/dashboard` isolado por escritório. Isolamento multi-tenant testado (09/09).
 - Site publicado na Netlify **público** (visibilidade Private + "Previews only", ou Public).
 - `.github/workflows/keepalive.yml` pinga o site a cada 2 dias pro Supabase free não pausar.
-- **WhatsApp (Fase 1 feita):** `/ajustes` com config por escritório (URL+token do gateway genérico) e
-  preferência pessoal. Dispara em **status/edição** e **comentário** (quando ator ≠ dono). Envio genérico
-  (`POST {url}` c/ `Authorization: Bearer {token}` e `{telefone, mensagem}`) — ajustar `whatsapp-envio.ts`
-  quando vier a spec da Nandu (redirectmais.com.br). Sem retry/fila (fire-and-forget com timeout 6s).
+- **WhatsApp (Fases 1 e 2 — código pronto, falta hospedar o gateway):** canal = **Baileys** (WhatsApp
+  Web não oficial, indicado por um programador conhecido do usuário) em `gateway-whatsapp/`. Mensagem
+  grátis (não é a API oficial da Meta); custo só de hospedagem + chip. Risco: ban do número → usar chip
+  dedicado. Avisos imediatos (ator ≠ dono): **atribuição** (chefe escolhe "Responsável" no formulário),
+  **status** (botões e arrastar card), **edição**, **comentário**. Agendados (pg_cron 5 min →
+  `/api/whatsapp/cron`): **prazo** vence amanhã/hoje/venceu ontem (a partir das 8h) e **compromisso**
+  30 min antes. Voz do Nitro: "Bom dia/tarde/noite, Chefe!" ou primeiro nome do funcionário + link.
+  Escritório liga em Ajustes → Integração (URL/token opcionais se houver gateway padrão no env).
+  Sem fila para os imediatos (fire-and-forget, timeout 10s); agendados refazem na próxima rodada se o
+  gateway estiver fora (erro 4xx = definitivo, não repete).
 
 ## SMTP próprio + "esqueci minha senha" (Supabase Auth)
 
@@ -321,20 +346,36 @@ redireciona pra `next` → `/redefinir-senha` (só funciona com a sessão de rec
 absoluta (protocolo+host) a partir dos headers pra funcionar em prod e local sem hardcode. Link "Esqueci
 minha senha" adicionado em `/login`.
 
+## Deploy: por que Vercel (migrado em 24/09)
+
+A conta da **Netlify estourou os créditos do plano grátis em 13/09** ("Skipped due to account credit
+usage exceeded") e desde então **nenhum deploy foi publicado lá** — o site da Netlify
+(`inspiring-genie-d3a1a7.netlify.app`) ficou congelado no commit `1eba1ef` (12/09). Foi por isso que em
+14/09 o app foi publicado na Vercel (e o Supabase Auth `site_url` + os crons do ManyChat já foram
+apontados pra lá nesse dia). Uma nota de 21/09 aqui dizia que "a Netlify continuava oficial" — estava
+errada, não tinha checado o estado dos deploys. **Decisão do usuário em 24/09: tudo na Vercel.**
+
+- Projeto `chaves5/secretaria` (conta Vercel `gabrielchaves03`), env vars de Production já cadastradas.
+- Plano **Hobby** (grátis) — os termos dele são para uso não comercial; se o SaaS passar a cobrar
+  clientes, migrar pro Pro.
+- `supabase/config.toml` alinhado com o remoto (site_url Vercel). **Não** rodar `config push` à toa: há
+  uma diferença pré-existente de `auth.sms.twilio.enabled` (remoto true) e a senha do SMTP vem de env.
+- `.vercelignore` exclui `gateway-whatsapp/` e `.env*`.
+
 ## Pendências
 
-- **Editor de Vídeos:** falta rodar a migration 0015 em produção (`supabase-aplicar.bat`);
-  estilo de legenda ainda não implementado (só o botão reservado) — quando o agente validar
+- **Editor de Vídeos:** migration 0015 já aplicada; estilo de legenda ainda não implementado (só o botão reservado) — quando o agente validar
   a legenda automática, decidir os modelos/estilos e aí sim adicionar a coluna/lógica; hoje
   o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
   notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
   se fizer sentido depois).
-- **WhatsApp Fase 2:** (a) recurso de o chefe **atribuir demanda a um funcionário** + gatilho "atribuição";
-  (b) **job agendado** (pg_cron ou GitHub Actions) para os avisos de **prazo chegando/vencido**; (c) lembrete
-  de **compromissos** (tabela `compromissos`, migration 0012 — já tem data+hora prontas pro lembrete).
-- Gateway de WhatsApp: usuário sem acesso ao **Redirect/Nandu** (redirectmais.com.br) ainda — quando destravar,
-  é só preencher URL+token em Ajustes → Integração do escritório, `whatsapp-envio.ts` já é genérico o
-  suficiente. **ManyChat descartado** pra esse uso: o canal WhatsApp dele roda sobre a API oficial da Meta
+- **WhatsApp:** (a) parear o número (chip dedicado) no `gateway-whatsapp` e testar ponta a ponta;
+  (b) **hospedar o gateway 24h** (Railway ~US$5/mês, VPS grátis da Oracle, ou onde o programador
+  hospeda) com disco persistente pra `sessao/`; (c) cadastrar `WHATSAPP_GATEWAY_URL`/`_TOKEN` na Vercel.
+- Vercel ainda **não está ligada ao GitHub** (deploys até aqui foram via CLI) — precisa dar acesso ao
+  repo privado pro app da Vercel no GitHub e rodar `vercel git connect`.
+- Gateway alternativo: **Redirect/Nandu** (redirectmais.com.br) — se um dia destravar, é só preencher
+  URL+token em Ajustes → Integração do escritório. **ManyChat descartado** pra esse uso: o canal WhatsApp dele roda sobre a API oficial da Meta
   (não evita o custo que o usuário quer evitar) e só manda mensagem pra quem já iniciou conversa (modelo de
   assinante/opt-in) — não serve pra notificação automática pra um número qualquer. Alternativa gratuita
   discutida, ainda não implementada: self-hostar **Evolution API** (open source, mesmo formato de POST

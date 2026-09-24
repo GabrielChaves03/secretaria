@@ -6,8 +6,16 @@ import { Plus } from "lucide-react";
 import { criarDemanda } from "@/app/dashboard/actions";
 import { FormularioDemanda } from "@/app/dashboard/_componentes/formulario-demanda";
 import { Modal } from "@/app/dashboard/_componentes/modal";
+import type { Membro } from "@/lib/escritorios";
 
-export function BotaoNovaDemanda() {
+export function BotaoNovaDemanda({
+  membros,
+  usuarioId,
+}: {
+  /** Só para o chefe — habilita o seletor de responsável. */
+  membros?: Pick<Membro, "id" | "nome">[];
+  usuarioId: string;
+}) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
 
@@ -27,6 +35,8 @@ export function BotaoNovaDemanda() {
           <FormularioDemanda
             acao={criarDemanda}
             rotuloEnvio="Criar demanda"
+            membros={membros}
+            usuarioId={usuarioId}
             aoConcluir={() => {
               setAberto(false);
               router.refresh();
