@@ -16,7 +16,7 @@ No ar na **Vercel** (`https://secretaria-chaves5.vercel.app`), deploy contínuo 
 | Calendário    | `@fullcalendar/react` v6 (`ssr: false`)                 |
 | Banco + Auth  | Supabase (`@supabase/supabase-js` + `@supabase/ssr`)   |
 | Sessão        | Cookies gerenciados pelo `@supabase/ssr`               |
-| Deploy        | Vercel (projeto `chaves5/secretaria`, Node 24) — `netlify.toml` é resto da época da Netlify |
+| Deploy        | Vercel (projeto `chaves5/secretaria`, Node 24), ligada ao GitHub — push em `main` publica |
 | WhatsApp      | `gateway-whatsapp/` — serviço Node separado com Baileys (não roda na Vercel) |
 
 `node` 22+, `npm`. `npm run dev` para desenvolver, `npm run build` para checar tipos/produção.
@@ -305,7 +305,7 @@ public/
 - Confirmação de e-mail **desligada** (`mailer_autoconfirm = true`) — cadastro entra direto.
 - **App é multi-empresa** (SaaS): cadastro público → `/onboarding` (criar escritório = vira chefe, ou
   entrar com código = funcionário) → `/dashboard` isolado por escritório. Isolamento multi-tenant testado (09/09).
-- Site publicado na Netlify **público** (visibilidade Private + "Previews only", ou Public).
+- Site publicado na Vercel, público.
 - `.github/workflows/keepalive.yml` pinga o site a cada 2 dias pro Supabase free não pausar.
 - **WhatsApp (Fases 1 e 2 — código pronto, falta hospedar o gateway):** canal = **Baileys** (WhatsApp
   Web não oficial, indicado por um programador conhecido do usuário) em `gateway-whatsapp/`. Mensagem
@@ -354,6 +354,7 @@ usage exceeded") e desde então **nenhum deploy foi publicado lá** — o site d
 14/09 o app foi publicado na Vercel (e o Supabase Auth `site_url` + os crons do ManyChat já foram
 apontados pra lá nesse dia). Uma nota de 21/09 aqui dizia que "a Netlify continuava oficial" — estava
 errada, não tinha checado o estado dos deploys. **Decisão do usuário em 24/09: tudo na Vercel.**
+O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo).
 
 - Projeto `chaves5/secretaria` (conta Vercel `gabrielchaves03`), env vars de Production já cadastradas.
 - Plano **Hobby** (grátis) — os termos dele são para uso não comercial; se o SaaS passar a cobrar
