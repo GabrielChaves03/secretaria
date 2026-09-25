@@ -361,6 +361,10 @@ errada, não tinha checado o estado dos deploys. **Decisão do usuário em 24/09
 - `supabase/config.toml` alinhado com o remoto (site_url Vercel). **Não** rodar `config push` à toa: há
   uma diferença pré-existente de `auth.sms.twilio.enabled` (remoto true) e a senha do SMTP vem de env.
 - `.vercelignore` exclui `gateway-whatsapp/` e `.env*`.
+- **Autor dos commits TEM que ser `gabrielchaves0308@gmail.com`** (e-mail da conta Vercel). No Hobby a
+  Vercel bloqueia (`BLOCKED` / `TEAM_ACCESS_REQUIRED`) deploy de commit de outro autor — foi o que
+  travou os deploys de 22/09 e 24/09 (commits saíam como `igintermediacoesbrasil@gmail.com`). O
+  `git config --local user.email` deste repo já está certo desde 24/09.
 
 ## Pendências
 
