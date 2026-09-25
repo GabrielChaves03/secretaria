@@ -23,7 +23,8 @@ export function temGatewayPadrao(): boolean {
 /**
  * URL/token efetivos: os do escritório, se o chefe preencheu uma URL
  * própria; senão o gateway padrão do Nitro (`WHATSAPP_GATEWAY_URL` /
- * `WHATSAPP_GATEWAY_TOKEN`, ver `gateway-whatsapp/`).
+ * `WHATSAPP_GATEWAY_TOKEN` — hoje uma Evolution API hospedada por um
+ * programador parceiro; `gateway-whatsapp/` é o fallback próprio).
  */
 function resolverGateway(
   config: Pick<ConfigWhatsapp, "endpoint_url" | "token">,
@@ -36,10 +37,19 @@ function resolverGateway(
 }
 
 /**
- * Faz o POST no gateway. Formato genérico (o mesmo do `gateway-whatsapp/`):
- *   POST {url}
- *   Authorization: Bearer {token}   (se houver token)
- *   { "telefone": "5511...", "mensagem": "..." }
+ * Evolution API (v2): URL no formato `.../message/sendText/{instancia}`.
+ * Pede header `apikey` e corpo `{ number, text }` em vez do nosso formato.
+ */
+function ehEvolution(url: string) {
+  return /\/message\/sendText\/[^/]+\/?$/.test(new URL(url).pathname);
+}
+
+/**
+ * Faz o POST no gateway, em um de dois formatos (detectado pela URL):
+ * - Evolution API:  POST .../message/sendText/{instancia}
+ *     apikey: {token}            { "number": "5511...", "text": "..." }
+ * - Genérico (o do `gateway-whatsapp/`):  POST {url}
+ *     Authorization: Bearer {token}   { "telefone": "5511...", "mensagem": "..." }
  *
  * Nunca lança — devolve sempre um ResultadoEnvio.
  */
@@ -56,13 +66,19 @@ export async function enviarMensagemWhatsapp(
   if (!tel) return { ok: false, motivo: "Telefone inválido ou vazio." };
 
   try {
+    const evolution = ehEvolution(gateway.url);
+    const auth: Record<string, string> = gateway.token
+      ? evolution
+        ? { apikey: gateway.token }
+        : { Authorization: `Bearer ${gateway.token}` }
+      : {};
+
     const res = await fetch(gateway.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(gateway.token ? { Authorization: `Bearer ${gateway.token}` } : {}),
-      },
-      body: JSON.stringify({ telefone: tel, mensagem }),
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify(
+        evolution ? { number: tel, text: mensagem } : { telefone: tel, mensagem },
+      ),
       signal: AbortSignal.timeout(10000),
     });
     const corpo = (await res.text()).slice(0, 500);
@@ -70,7 +86,11 @@ export async function enviarMensagemWhatsapp(
       return {
         ok: false,
         motivo: `HTTP ${res.status}: ${corpo || "sem corpo"}`,
-        definitivo: res.status >= 400 && res.status < 500,
+        // Só não adianta repetir se o número não tem WhatsApp. Na Evolution
+        // um 400 também pode ser "instância desconectada" — esse repete.
+        definitivo: evolution
+          ? /"exists":\s*false/.test(corpo)
+          : res.status >= 400 && res.status < 500,
       };
     }
     return { ok: true, status: res.status, corpo };

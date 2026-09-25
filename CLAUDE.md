@@ -69,9 +69,12 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
   App do Meta for Developers usado pelo ManyChat (mesmo App do antigo `ig-dm-automacao`).
 - `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e as rotas
   `/api/manychat/cron/*` e `/api/whatsapp/cron` (no Vault do Supabase: `manychat_cron_secret`).
-- `WHATSAPP_GATEWAY_URL` / `WHATSAPP_GATEWAY_TOKEN` — gateway padrão do Nitro (`gateway-whatsapp/`,
-  `POST .../enviar`). Usado quando o escritório não preencheu URL própria em Ajustes. Localmente
-  aponta pra `http://localhost:3333/enviar`; em produção, falta hospedar o gateway (ver Pendências).
+- `WHATSAPP_GATEWAY_URL` / `WHATSAPP_GATEWAY_TOKEN` — gateway padrão, usado quando o escritório não
+  preencheu URL própria em Ajustes. **Desde 25/09 = Evolution API v2.3.7 hospedada por um programador
+  sênior parceiro** (`http://159.112.178.84:8080/message/sendText/instance`, token = `apikey`), cadastrada
+  no `.env.local` e na Vercel (Production). `whatsapp-envio.ts` detecta Evolution pela URL
+  (`/message/sendText/{instancia}`) e manda header `apikey` + `{number, text}`; qualquer outra URL usa o
+  formato genérico do `gateway-whatsapp/` (Bearer + `{telefone, mensagem}`), que virou fallback.
   `SUPABASE_SERVICE_ROLE_KEY` também é usada pelo cron do WhatsApp (`whatsapp-agendados.ts`).
 
 ## Estrutura
@@ -374,9 +377,10 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
   notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
   se fizer sentido depois).
-- **WhatsApp:** (a) parear o número (chip dedicado) no `gateway-whatsapp` e testar ponta a ponta;
-  (b) **hospedar o gateway 24h** (Railway ~US$5/mês, VPS grátis da Oracle, ou onde o programador
-  hospeda) com disco persistente pra `sessao/`; (c) cadastrar `WHATSAPP_GATEWAY_URL`/`_TOKEN` na Vercel.
+- **WhatsApp:** parear o chip da Secretária na instância `instance` da Evolution (painel
+  `http://159.112.178.84:8080/manager`; estava `close` em 25/09), ligar a integração em Ajustes e testar
+  ponta a ponta. A `apikey` recebida é a **global** do servidor (lista/controla todas as instâncias) e
+  trafega em HTTP puro — pedir ao programador o token só da instância e, se possível, HTTPS.
 - Vercel ainda **não está ligada ao GitHub** (deploys até aqui foram via CLI) — precisa dar acesso ao
   repo privado pro app da Vercel no GitHub e rodar `vercel git connect`.
 - Gateway alternativo: **Redirect/Nandu** (redirectmais.com.br) — se um dia destravar, é só preencher
