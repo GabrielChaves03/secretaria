@@ -75,6 +75,9 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
   no `.env.local` e na Vercel (Production). `whatsapp-envio.ts` detecta Evolution pela URL
   (`/message/sendText/{instancia}`) e manda header `apikey` + `{number, text}`; qualquer outra URL usa o
   formato genérico do `gateway-whatsapp/` (Bearer + `{telefone, mensagem}`), que virou fallback.
+- `WHATSAPP_QR_SEGREDO` — libera a página pública `/conectar-whatsapp?t=<segredo>` (QR que se renova
+  sozinho, para outra pessoa parear o número). A `apikey` fica só no servidor (`/api/whatsapp/qr`
+  faz de proxy pra Evolution). Pra invalidar um link já enviado: trocar o valor na Vercel e redeployar.
   `SUPABASE_SERVICE_ROLE_KEY` também é usada pelo cron do WhatsApp (`whatsapp-agendados.ts`).
 
 ## Estrutura
