@@ -70,9 +70,13 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
 - `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e as rotas
   `/api/manychat/cron/*` e `/api/whatsapp/cron` (no Vault do Supabase: `manychat_cron_secret`).
 - `WHATSAPP_GATEWAY_URL` / `WHATSAPP_GATEWAY_TOKEN` — gateway padrão, usado quando o escritório não
-  preencheu URL própria em Ajustes. **Desde 25/09 = Evolution API v2.3.7 hospedada por um programador
-  sênior parceiro** (`http://159.112.178.84:8080/message/sendText/instance`, token = `apikey`), cadastrada
-  no `.env.local` e na Vercel (Production). `whatsapp-envio.ts` detecta Evolution pela URL
+  preencheu URL própria em Ajustes. **Desde 28/09 = Evolution API v2.3.7 do programador sênior parceiro,
+  servidor `https://evolution-api-k91lv.169.58.90.253.sslip.io`** (painel em `/manager`), **instância
+  `secretaria`** criada só pra nós (a instância "Gabriel Whatsapp" é o número pessoal dele — NÃO usar).
+  `WHATSAPP_GATEWAY_URL` = `.../message/sendText/secretaria`; `WHATSAPP_GATEWAY_TOKEN` = **token da
+  instância** (só enxerga/controla a `secretaria`), não a apikey global — a global não fica guardada no
+  projeto. Cadastradas no `.env.local` e na Vercel (Production). O servidor antigo
+  (`159.112.178.84:8080`, HTTP) travou em 27/09 e foi abandonado. `whatsapp-envio.ts` detecta Evolution pela URL
   (`/message/sendText/{instancia}`) e manda header `apikey` + `{number, text}`; qualquer outra URL usa o
   formato genérico do `gateway-whatsapp/` (Bearer + `{telefone, mensagem}`), que virou fallback.
 - `WHATSAPP_QR_SEGREDO` — libera a página pública `/conectar-whatsapp?t=<segredo>` (QR que se renova
@@ -380,12 +384,10 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
   notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
   se fizer sentido depois).
-- **WhatsApp:** parear o chip da Secretária na instância `instance` da Evolution (painel
-  `http://159.112.178.84:8080/manager`; estava `close` em 25/09), ligar a integração em Ajustes e testar
-  ponta a ponta. A `apikey` recebida é a **global** do servidor (lista/controla todas as instâncias) e
-  trafega em HTTP puro — pedir ao programador o token só da instância e, se possível, HTTPS.
-- Vercel ainda **não está ligada ao GitHub** (deploys até aqui foram via CLI) — precisa dar acesso ao
-  repo privado pro app da Vercel no GitHub e rodar `vercel git connect`.
+- **WhatsApp:** parear um **número novo** (chip dedicado da Secretária) na instância `secretaria` — dá
+  pra mandar o link `/conectar-whatsapp?t=<WHATSAPP_QR_SEGREDO>` pra quem vai escanear; depois ligar a
+  integração em Ajustes e testar ponta a ponta.
+- Vercel ligada ao GitHub desde 25/09 (push em `main` publica sozinho).
 - Gateway alternativo: **Redirect/Nandu** (redirectmais.com.br) — se um dia destravar, é só preencher
   URL+token em Ajustes → Integração do escritório. **ManyChat descartado** pra esse uso: o canal WhatsApp dele roda sobre a API oficial da Meta
   (não evita o custo que o usuário quer evitar) e só manda mensagem pra quem já iniciou conversa (modelo de
