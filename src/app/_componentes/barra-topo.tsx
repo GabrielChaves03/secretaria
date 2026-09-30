@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, LogOut, Search, SlidersHorizontal } from "lucide-react";
 import { sair } from "@/app/auth/actions";
 import { Marca } from "@/app/_componentes/marca";
@@ -68,12 +68,15 @@ function CampoBuscaConectado() {
 
 function CampoBusca({ inicial }: { inicial: string }) {
   const router = useRouter();
+  const caminho = usePathname();
   const [termo, setTermo] = useState(inicial);
 
   function aoEnviar(e: React.FormEvent) {
     e.preventDefault();
     const q = termo.trim();
-    router.push(q ? `/dashboard?q=${encodeURIComponent(q)}` : "/dashboard");
+    // Na visão de funcionários a busca filtra ali mesmo; no resto, no quadro pessoal.
+    const destino = caminho.startsWith("/dashboard/equipe") ? "/dashboard/equipe" : "/dashboard";
+    router.push(q ? `${destino}?q=${encodeURIComponent(q)}` : destino);
   }
 
   return (

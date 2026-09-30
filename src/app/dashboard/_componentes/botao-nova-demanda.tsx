@@ -11,10 +11,13 @@ import type { Membro } from "@/lib/escritorios";
 export function BotaoNovaDemanda({
   membros,
   usuarioId,
+  responsavelPadrao,
 }: {
   /** Só para o chefe — habilita o seletor de responsável. */
   membros?: Pick<Membro, "id" | "nome">[];
   usuarioId: string;
+  /** Quem vem selecionado no seletor (padrão: o próprio usuário). */
+  responsavelPadrao?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -37,6 +40,7 @@ export function BotaoNovaDemanda({
             rotuloEnvio="Criar demanda"
             membros={membros}
             usuarioId={usuarioId}
+            responsavelPadrao={responsavelPadrao}
             aoConcluir={() => {
               setAberto(false);
               router.refresh();

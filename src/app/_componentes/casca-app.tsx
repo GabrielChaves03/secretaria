@@ -29,7 +29,7 @@ export async function CascaApp({ children }: { children: ReactNode }) {
         notificacoes={notificacoes}
       />
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <BarraLateral />
+        <BarraLateral ehChefe={perfil.papel === "chefe"} />
         <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </div>

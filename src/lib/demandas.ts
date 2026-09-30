@@ -70,3 +70,18 @@ export function ehDificuldade(
 ): valor is Dificuldade {
   return !!valor && (DIFICULDADES as readonly string[]).includes(valor);
 }
+
+/** Data de hoje no formato YYYY-MM-DD, no fuso de São Paulo. */
+export function hojeISO() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+/** Não concluída e com o prazo de entrega já passado. */
+export function estaAtrasada(
+  d: Pick<Demanda, "status" | "data_entrega">,
+  hoje: string,
+): boolean {
+  return d.status !== "concluida" && !!d.data_entrega && d.data_entrega < hoje;
+}

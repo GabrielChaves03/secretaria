@@ -133,7 +133,8 @@ src/
       casca-app.tsx            # server: barra do topo + barra lateral + <main> (área logada)
       barra-topo.tsx           # client: logo + busca de demandas (?q=) + PainelNotificacoes + menu do perfil (sair)
       painel-notificacoes.tsx  # client: sino + painel suspenso (lista, "apenas não lidas", marcar todas como lidas)
-      barra-lateral.tsx        # client: nav (Demandas, Calendário, ManyChat, Editor de Vídeos) — lateral no desktop, faixa no mobile
+      barra-lateral.tsx        # client: nav (Demandas, Calendário, ManyChat, Editor de Vídeos) — lateral no desktop, faixa no mobile.
+                               #   Chefe: "Demandas" vira grupo recolhível → Demandas Pessoais (/dashboard) + Demandas Funcionários (/dashboard/equipe)
     auth/actions.ts            # Server Actions: entrar, cadastrar (→ /onboarding), sair
     login/ , cadastro/         # page.tsx (server) + formulario-*.tsx (client)
     onboarding/                # page.tsx (sem escritório) + actions.ts (criarEscritorio/entrarEscritorio, via RPC) + formularios (client, abas criar/entrar)
@@ -156,7 +157,8 @@ src/
                                #   cartao-calendario (globals.css): cartão maior, opaco, cobrindo o fundo pixelado
     dashboard/
       layout.tsx               # aplica a CascaApp (barra do topo + barra lateral)
-      page.tsx                 # server: busca dados, monta colunas (4 automáticas + 1 por lista) e passa pro <QuadroDemandas>
+      page.tsx                 # server: quadro PESSOAL (só demandas/listas do usuário logado, inclusive do chefe) —
+                               #   monta colunas (4 automáticas + 1 por lista) e passa pro <QuadroDemandas>
                                #   coluna automática: concluída→Concluídas; não concluída c/ prazo vencido→Pendentes;
                                #   status 'pendente'→A iniciar (toda demanda nova nasce aqui); 'em_andamento'→Em andamento.
                                #   "Pendentes" é só por prazo: não aceita soltar card (destino ""). Status 'pendente' no
@@ -170,6 +172,9 @@ src/
                                #   card mostra só título/descrição/dificuldade/prazo/botão de status — resto num menu de contexto
                                #   aberto pelo lápis no hover ou botão direito: Editar / Comentário (modal) / Mover para / Excluir),
                                #   formulario-demanda.tsx, bloco-comentarios.tsx, marcar-lidas.tsx, modal.tsx…
+      equipe/page.tsx          # SÓ CHEFE: uma coluna por membro (menos ele) com as demandas dele; filtro no topo
+                               #   (?filtro=todas|a_iniciar|em_andamento|concluidas|pendentes) + busca ?q. Usa o
+                               #   <QuadroDemandas modo="equipe">: sem arrastar, sem listas, faixa de cor por situação do card
       nova/page.tsx            # criar demanda
       [id]/editar/page.tsx     # editar demanda + comentários
       notificacoes/page.tsx    # lista de notificações (marca como lidas ao abrir)

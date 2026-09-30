@@ -14,16 +14,9 @@ import {
   listarComentariosPorDemanda,
   type Comentario,
 } from "@/lib/comentarios-consultas";
-import type { DemandaComDono } from "@/lib/demandas";
+import { hojeISO, type DemandaComDono } from "@/lib/demandas";
 
 export const metadata = { title: "Demandas" };
-
-/** Data de hoje no formato YYYY-MM-DD, no fuso de São Paulo. */
-function hojeISO() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date());
-}
 
 type ChaveAuto = "a_iniciar" | "em_andamento" | "concluida" | "atrasada";
 
@@ -83,9 +76,11 @@ export default async function PaginaDashboard({
   const busca = qBruto?.trim() || undefined;
   const ehChefe = perfil.papel === "chefe";
 
+  // Quadro pessoal: só o que é da própria pessoa. (O chefe enxerga tudo pela
+  // RLS — as demandas dos funcionários ficam em /dashboard/equipe.)
   const [demandas, listas, membros] = await Promise.all([
-    listarDemandas(undefined, busca),
-    listarListas(),
+    listarDemandas(undefined, busca, perfil.id),
+    listarListas(perfil.id),
     ehChefe ? listarMembros() : Promise.resolve(undefined),
   ]);
   const comentariosMapa = await listarComentariosPorDemanda(
@@ -143,10 +138,10 @@ export default async function PaginaDashboard({
     <main className="flex w-full flex-1 flex-col px-4 py-6 md:px-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Demandas</h1>
-          <p className="mt-0.5 text-sm text-fg-secondary">
-            {ehChefe ? "Todas as demandas da equipe." : "Suas demandas."}
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {ehChefe ? "Demandas pessoais" : "Demandas"}
+          </h1>
+          <p className="mt-0.5 text-sm text-fg-secondary">Suas demandas.</p>
         </div>
         <BotaoNovaDemanda membros={membros} usuarioId={perfil.id} />
       </header>
@@ -177,7 +172,6 @@ export default async function PaginaDashboard({
           cardsPorColuna={cardsPorColuna}
           comentariosPorDemanda={comentariosPorDemanda}
           listas={listas.map((l) => ({ id: l.id, nome: l.nome }))}
-          ehChefe={ehChefe}
           usuarioId={perfil.id}
         />
       )}

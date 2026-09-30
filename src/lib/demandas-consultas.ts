@@ -8,6 +8,7 @@ import type { Demanda, DemandaComDono, Status } from "@/lib/demandas";
  * mais antiga. A RLS decide o recorte: funcionário vê só as suas, chefe vê
  * todas. `status` é o filtro opcional da UI e `busca` é o termo da barra de
  * pesquisa (casa com título ou descrição, sem diferenciar maiúsculas).
+ * `donoId` restringe às demandas de uma pessoa (quadro pessoal do chefe).
  *
  * Também resolve o nome do dono de cada demanda (uma consulta extra a
  * `usuarios`) — relevante na visão do chefe.
@@ -15,6 +16,7 @@ import type { Demanda, DemandaComDono, Status } from "@/lib/demandas";
 export async function listarDemandas(
   status?: Status,
   busca?: string,
+  donoId?: string,
 ): Promise<DemandaComDono[]> {
   const supabase = await criarClienteServidor();
 
@@ -25,6 +27,9 @@ export async function listarDemandas(
 
   if (status) {
     consulta = consulta.eq("status", status);
+  }
+  if (donoId) {
+    consulta = consulta.eq("usuario_id", donoId);
   }
 
   // Remove os caracteres que quebram a sintaxe do `.or()` do PostgREST.

@@ -26,8 +26,10 @@ type Props = {
    * o seletor "Responsável" (atribuir a demanda a outra pessoa).
    */
   membros?: Pick<Membro, "id" | "nome">[];
-  /** Usuário logado — responsável padrão ao criar. */
+  /** Usuário logado — marcado como "(você)" e responsável padrão ao criar. */
   usuarioId?: string;
+  /** Responsável pré-selecionado ao criar (sobrepõe `usuarioId`). */
+  responsavelPadrao?: string;
 };
 
 export function FormularioDemanda({
@@ -37,6 +39,7 @@ export function FormularioDemanda({
   aoConcluir,
   membros,
   usuarioId,
+  responsavelPadrao,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -125,7 +128,7 @@ export function FormularioDemanda({
           <select
             id="responsavel_id"
             name="responsavel_id"
-            defaultValue={demanda?.usuario_id ?? usuarioId ?? ""}
+            defaultValue={demanda?.usuario_id ?? responsavelPadrao ?? usuarioId ?? ""}
             className="campo"
           >
             {membros.map((m) => (

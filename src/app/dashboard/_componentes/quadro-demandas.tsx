@@ -65,6 +65,8 @@ export type ColunaQuadro = {
 
 export type CartaoDemanda = DemandaComDono & {
   atrasada: boolean;
+  /** faixa de cor própria do card (`.coluna-*`); sem ela, usa a da coluna */
+  barra?: string;
   /** token da coluna onde o card está agora: "auto:<chave>" | "lista:<id>" */
   tokenAtual: string;
 };
@@ -76,16 +78,22 @@ export function QuadroDemandas({
   cardsPorColuna,
   comentariosPorDemanda,
   listas,
-  ehChefe,
   usuarioId,
+  modo = "status",
 }: {
   colunas: ColunaQuadro[];
   cardsPorColuna: Record<string, CartaoDemanda[]>;
   comentariosPorDemanda: Record<string, Comentario[]>;
   listas: ListaResumo[];
-  ehChefe: boolean;
   usuarioId: string;
+  /**
+   * "status": colunas por status/prazo + listas (quadro normal).
+   * "equipe": uma coluna por pessoa (visão do chefe) — sem arrastar e sem
+   * "Adicionar outra lista"; mudar o status não troca o card de coluna.
+   */
+  modo?: "status" | "equipe";
 }) {
+  const equipe = modo === "equipe";
   const router = useRouter();
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<string | null>(null);
@@ -133,6 +141,7 @@ export function QuadroDemandas({
   /** Token da coluna em que o card cai ao ir para `destino` (mesma regra do servidor). */
   function tokenAlvoDe(destino: string, card: CartaoDemanda): string {
     if (destino.startsWith("lista:")) return destino;
+    if (equipe) return card.tokenAtual;
     const status = destino.slice("status:".length);
     if (status === "concluida") return "auto:concluida";
     if (card.atrasada) return "auto:atrasada";
@@ -168,8 +177,8 @@ export function QuadroDemandas({
           cards={colunasView[coluna.token] ?? []}
           comentariosPorDemanda={comentariosPorDemanda}
           listas={listas}
-          ehChefe={ehChefe}
           usuarioId={usuarioId}
+          arrastavel={!equipe}
           arrastando={arrastando}
           alvoAtivo={alvo === coluna.token}
           onEntrarAlvo={() => setAlvo(coluna.token)}
@@ -186,6 +195,7 @@ export function QuadroDemandas({
         />
       ))}
 
+      {!equipe && (
       <div className="w-full shrink-0 md:w-[19.5rem]">
         {criando ? (
           <form
@@ -229,6 +239,7 @@ export function QuadroDemandas({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -238,8 +249,8 @@ function Coluna({
   cards,
   comentariosPorDemanda,
   listas,
-  ehChefe,
   usuarioId,
+  arrastavel,
   arrastando,
   alvoAtivo,
   onEntrarAlvo,
@@ -253,8 +264,8 @@ function Coluna({
   cards: CartaoDemanda[];
   comentariosPorDemanda: Record<string, Comentario[]>;
   listas: ListaResumo[];
-  ehChefe: boolean;
   usuarioId: string;
+  arrastavel: boolean;
   arrastando: string | null;
   alvoAtivo: boolean;
   onEntrarAlvo: () => void;
@@ -349,8 +360,8 @@ function Coluna({
           <Cartao
             key={d.id}
             demanda={d}
-            barra={coluna.barra}
-            ehChefe={ehChefe}
+            barra={d.barra ?? coluna.barra}
+            arrastavel={arrastavel}
             usuarioId={usuarioId}
             comentarios={comentariosPorDemanda[d.id] ?? []}
             listas={listas}
@@ -407,7 +418,7 @@ function MenuLista({
 function Cartao({
   demanda: d,
   barra,
-  ehChefe,
+  arrastavel,
   usuarioId,
   comentarios,
   listas,
@@ -418,7 +429,7 @@ function Cartao({
 }: {
   demanda: CartaoDemanda;
   barra?: string;
-  ehChefe: boolean;
+  arrastavel: boolean;
   usuarioId: string;
   comentarios: Comentario[];
   listas: ListaResumo[];
@@ -443,7 +454,7 @@ function Cartao({
 
   return (
     <li
-      draggable
+      draggable={arrastavel}
       onDragStart={aoIniciar}
       onDragEnd={onFimArraste}
       onContextMenu={(e) => {
@@ -474,10 +485,6 @@ function Cartao({
       <p className="pr-8 text-[13px] font-semibold leading-snug text-foreground">
         {d.titulo}
       </p>
-
-      {ehChefe && d.dono_nome && (
-        <p className="mt-1 text-xs text-fg-tertiary">{d.dono_nome}</p>
-      )}
 
       {d.descricao && (
         <p className="mt-1.5 whitespace-pre-wrap text-xs text-fg-secondary">
