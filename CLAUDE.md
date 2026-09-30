@@ -384,9 +384,11 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
   notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
   se fizer sentido depois).
-- **WhatsApp:** parear um **número novo** (chip dedicado da Secretária) na instância `secretaria` — dá
-  pra mandar o link `/conectar-whatsapp?t=<WHATSAPP_QR_SEGREDO>` pra quem vai escanear; depois ligar a
-  integração em Ajustes e testar ponta a ponta.
+- **WhatsApp:** instância `secretaria` conectada em 29/09 a um **número de TESTE** (+55 83 9960-8848,
+  perfil "Ana - Suporte Gomapet" — número da GomaPet reaproveitado só pra montar/testar as mensagens).
+  Pra trocar pelo definitivo: desconectar o aparelho no celular e escanear o QR de novo pelo link
+  `/conectar-whatsapp?t=<WHATSAPP_QR_SEGREDO>` — nada muda no código/env. Falta: ligar a integração em
+  Ajustes, teste ponta a ponta e refinar os textos das mensagens.
 - Vercel ligada ao GitHub desde 25/09 (push em `main` publica sozinho).
 - Gateway alternativo: **Redirect/Nandu** (redirectmais.com.br) — se um dia destravar, é só preencher
   URL+token em Ajustes → Integração do escritório. **ManyChat descartado** pra esse uso: o canal WhatsApp dele roda sobre a API oficial da Meta
