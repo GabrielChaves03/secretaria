@@ -12,7 +12,7 @@ import {
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
-import { marcarNotificacoesLidas } from "@/app/dashboard/actions";
+import { marcarNotificacoesLidas } from "@/app/(app)/dashboard/actions";
 import type { Notificacao, TipoNotificacao } from "@/lib/notificacoes";
 
 const ICONE: Record<TipoNotificacao, LucideIcon> = {

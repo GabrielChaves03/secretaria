@@ -86,6 +86,13 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
 
 ## Estrutura
 
+> **Grupo de rotas `src/app/(app)/` (desde 30/09):** `dashboard/`, `calendario/`, `ajustes/`,
+> `escritorio/`, `manychat/` e `editor-de-videos/` ficam dentro de `(app)/` (o grupo não aparece na URL).
+> `(app)/layout.tsx` aplica a `CascaApp` UMA vez pra toda a área logada — trocar de aba não remonta a
+> barra do topo/lateral nem refaz as consultas do sino — e `(app)/loading.tsx` mostra um esqueleto na
+> hora enquanto a página nova carrega. Imports: `@/app/(app)/dashboard/...`. A árvore abaixo omite o
+> `(app)/` por brevidade. Página nova da área logada: criar dentro de `(app)/`, sem envolver em `CascaApp`.
+
 ```
 src/
   proxy.ts                     # "middleware" do Next 16: renova sessão + exige login em /dashboard /calendario /onboarding /escritorio
@@ -156,7 +163,6 @@ src/
                                #   modal de editar/excluir (mesmo FormularioCompromisso do criar)
                                #   cartao-calendario (globals.css): cartão maior, opaco, cobrindo o fundo pixelado
     dashboard/
-      layout.tsx               # aplica a CascaApp (barra do topo + barra lateral)
       page.tsx                 # server: quadro PESSOAL (só demandas/listas do usuário logado, inclusive do chefe) —
                                #   monta colunas (4 automáticas + 1 por lista) e passa pro <QuadroDemandas>
                                #   coluna automática: concluída→Concluídas; não concluída c/ prazo vencido→Pendentes;
