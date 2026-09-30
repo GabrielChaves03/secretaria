@@ -381,6 +381,9 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
 - `supabase/config.toml` alinhado com o remoto (site_url Vercel). **Não** rodar `config push` à toa: há
   uma diferença pré-existente de `auth.sms.twilio.enabled` (remoto true) e a senha do SMTP vem de env.
 - `.vercelignore` exclui `gateway-whatsapp/` e `.env*`.
+- **Funções rodam em `gru1` (São Paulo)** via `vercel.json` (`regions`), ao lado do Supabase (`sa-east-1`).
+  Antes (30/09) rodavam no padrão `iad1` (Washington) e cada consulta ao banco cruzava o continente —
+  navegar entre abas levava ~1 s+. Não voltar para outra região sem motivo.
 - **Autor dos commits TEM que ser `gabrielchaves0308@gmail.com`** (e-mail da conta Vercel). No Hobby a
   Vercel bloqueia (`BLOCKED` / `TEAM_ACCESS_REQUIRED`) deploy de commit de outro autor — foi o que
   travou os deploys de 22/09 e 24/09 (commits saíam como `igintermediacoesbrasil@gmail.com`). O
