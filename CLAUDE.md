@@ -156,8 +156,11 @@ src/
                                #   cartao-calendario (globals.css): cartão maior, opaco, cobrindo o fundo pixelado
     dashboard/
       layout.tsx               # aplica a CascaApp (barra do topo + barra lateral)
-      page.tsx                 # server: busca dados, monta colunas (3 automáticas + 1 por lista) e passa pro <QuadroDemandas>
-                               #   coluna automática: concluída→Concluídas; não concluída c/ prazo vencido→Pendentes; senão→Em andamento
+      page.tsx                 # server: busca dados, monta colunas (4 automáticas + 1 por lista) e passa pro <QuadroDemandas>
+                               #   coluna automática: concluída→Concluídas; não concluída c/ prazo vencido→Pendentes;
+                               #   status 'pendente'→A iniciar (toda demanda nova nasce aqui); 'em_andamento'→Em andamento.
+                               #   "Pendentes" é só por prazo: não aceita soltar card (destino ""). Status 'pendente' no
+                               #   banco = rótulo "A iniciar" na UI/notificações (migration 0018)
                                #   demanda com lista_id vai pra essa lista (ignora a automática); "Iniciar" só no pendente inicial
       actions.ts               # Server Actions: demanda (criar/atualizar/status/apagar), comentário, notificações lidas,
                                #   lista (criarLista/renomearLista/apagarLista), moverDemanda(id, "status:<x>"|"lista:<id>")
@@ -198,7 +201,7 @@ src/
     instagram/media/route.ts     # seletor de posts do formulário de automação
   api/whatsapp/cron/route.ts   # batido pelo pg_cron a cada 5 min (migration 0016/0017) → avisos agendados
 supabase/
-  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0017_). Aplicar: supabase-aplicar.bat
+  migrations/                  # SQL versionado, prefixo numérico (0001_ … 0018_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita
                                #          por escritório, trigger que trava troca de papel/escritório fora das RPCs. ZEROU os dados.
@@ -222,6 +225,7 @@ supabase/
                                #          escritorio_whatsapp.notif_compromisso, tabela whatsapp_avisos_enviados
                                #          (sem policy — só service role) e pg_cron 'whatsapp-avisos-agendados'.
                                #   0017 = reaponta esse cron pra URL da Vercel.
+                               #   0018 = rotulo_status('pendente') = 'A iniciar' (coluna nova do quadro).
 gateway-whatsapp/              # serviço Node SEPARADO (Baileys): pareia um número por QR e expõe
                                #   POST /enviar {telefone, mensagem} (Bearer GATEWAY_TOKEN), GET /status,
                                #   GET /?token= (página do QR). Sessão em sessao/ (não versionada).
@@ -279,7 +283,7 @@ public/
 
 ## Estado
 
-- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0017` aplicadas.
+- `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0018` aplicadas.
 - **ManyChat em `/manychat` (12/09):** 1ª peça da integração "Central de Agentes dentro do
   Secretária" a ser efetivamente lançada (o Roteirista Digital foi tentado antes e revertido por
   depender de custo de API — ver histórico). Automação de DM do Instagram por regras/palavra-chave,

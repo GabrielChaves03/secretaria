@@ -53,7 +53,7 @@ const FMT_DATA = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
 export type ColunaQuadro = {
   /** chave única de agrupamento: "auto:em_andamento" | "lista:<id>" */
   token: string;
-  /** destino passado para `moverDemanda` ao soltar: "auto" | "lista:<id>" */
+  /** destino passado para `moverDemanda` ao soltar: "status:<x>" | "lista:<id>" | "" (não aceita soltar) */
   destino: string;
   titulo: string;
   tipo: "auto" | "lista";
@@ -135,7 +135,8 @@ export function QuadroDemandas({
     if (destino.startsWith("lista:")) return destino;
     const status = destino.slice("status:".length);
     if (status === "concluida") return "auto:concluida";
-    return card.atrasada ? "auto:pendente" : "auto:em_andamento";
+    if (card.atrasada) return "auto:atrasada";
+    return status === "pendente" ? "auto:a_iniciar" : "auto:em_andamento";
   }
 
   function mover(demandaId: string, destino: string) {
@@ -152,8 +153,9 @@ export function QuadroDemandas({
     const id = arrastando;
     setArrastando(null);
     setAlvo(null);
-    // no-op só quando solta na MESMA coluna de onde saiu.
-    if (!id || cardsById[id]?.tokenAtual === coluna.token) return;
+    // no-op quando solta na MESMA coluna de onde saiu, ou numa coluna só por
+    // prazo ("Pendentes" — o card vai pra lá sozinho quando vence).
+    if (!id || !coluna.destino || cardsById[id]?.tokenAtual === coluna.token) return;
     mover(id, coluna.destino);
   }
 
@@ -267,6 +269,7 @@ function Coluna({
   return (
     <section
       onDragOver={(e) => {
+        if (!coluna.destino) return; // "Pendentes" não aceita soltar
         e.preventDefault();
         if (!alvoAtivo) onEntrarAlvo();
       }}
@@ -625,9 +628,9 @@ function MenuCartao({
     : `status:${d.status}`;
 
   const opcoesMover: { valor: string; rotulo: string }[] = [
+    { valor: "status:pendente", rotulo: "A iniciar" },
     { valor: "status:em_andamento", rotulo: "Em andamento" },
     { valor: "status:concluida", rotulo: "Concluída" },
-    { valor: "status:pendente", rotulo: "Pendente" },
     ...listas.map((l) => ({ valor: `lista:${l.id}`, rotulo: l.nome })),
   ];
 

@@ -25,33 +25,51 @@ function hojeISO() {
   }).format(new Date());
 }
 
-type ChaveAuto = "em_andamento" | "concluida" | "pendente";
+type ChaveAuto = "a_iniciar" | "em_andamento" | "concluida" | "atrasada";
 
 const COLUNAS_AUTO: {
   chave: ChaveAuto;
+  /** Status que a demanda ganha ao ser solta aqui; "" = coluna só por prazo (não aceita soltar). */
+  status: string;
   titulo: string;
   dot: string;
   barra: string;
 }[] = [
   {
+    chave: "a_iniciar",
+    status: "pendente",
+    titulo: "A iniciar",
+    dot: "bg-[#5b8def]",
+    barra: "coluna-a-iniciar",
+  },
+  {
     chave: "em_andamento",
+    status: "em_andamento",
     titulo: "Em andamento",
     dot: "bg-[#e0a63a]",
     barra: "coluna-em-andamento",
   },
-  { chave: "concluida", titulo: "Concluídas", dot: "bg-accent", barra: "coluna-concluida" },
-  { chave: "pendente", titulo: "Pendentes", dot: "bg-danger", barra: "coluna-pendente" },
+  {
+    chave: "concluida",
+    status: "concluida",
+    titulo: "Concluídas",
+    dot: "bg-accent",
+    barra: "coluna-concluida",
+  },
+  { chave: "atrasada", status: "", titulo: "Pendentes", dot: "bg-danger", barra: "coluna-pendente" },
 ];
 
 /**
  * Coluna automática de uma demanda:
  * - Concluídas: status "concluida";
  * - Pendentes: não concluída (iniciada ou não) e com o prazo de entrega vencido;
- * - Em andamento: as demais (sem prazo, ou prazo ainda no futuro).
+ * - A iniciar: status "pendente" (recém-criada, ninguém começou) dentro do prazo;
+ * - Em andamento: status "em_andamento" dentro do prazo.
  */
 function colunaAutoDe(d: DemandaComDono, hoje: string): ChaveAuto {
   if (d.status === "concluida") return "concluida";
-  if (d.data_entrega && d.data_entrega < hoje) return "pendente";
+  if (d.data_entrega && d.data_entrega < hoje) return "atrasada";
+  if (d.status === "pendente") return "a_iniciar";
   return "em_andamento";
 }
 
@@ -83,7 +101,7 @@ export default async function PaginaDashboard({
   const colunas: ColunaQuadro[] = [
     ...COLUNAS_AUTO.map((c) => ({
       token: `auto:${c.chave}`,
-      destino: `status:${c.chave}`,
+      destino: c.status ? `status:${c.status}` : "",
       titulo: c.titulo,
       tipo: "auto" as const,
       dot: c.dot,

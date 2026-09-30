@@ -370,6 +370,9 @@ header.bg-sidebar {
   background: var(--cor-coluna, transparent);
   opacity: 0.9;
 }
+.coluna-a-iniciar {
+  --cor-coluna: #5b8def;
+}
 .coluna-em-andamento {
   --cor-coluna: #e0a63a;
 }

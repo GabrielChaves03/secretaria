@@ -42,7 +42,7 @@ export const ROTULO_DIFICULDADE: Record<Dificuldade, string> = {
 };
 
 export const ROTULO_STATUS: Record<Status, string> = {
-  pendente: "Pendente",
+  pendente: "A iniciar",
   em_andamento: "Em andamento",
   concluida: "Concluída",
 };
