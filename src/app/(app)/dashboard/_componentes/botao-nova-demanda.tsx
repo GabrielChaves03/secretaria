@@ -12,12 +12,15 @@ export function BotaoNovaDemanda({
   membros,
   usuarioId,
   responsavelPadrao,
+  quadroId,
 }: {
   /** Só para o chefe — habilita o seletor de responsável. */
   membros?: Pick<Membro, "id" | "nome">[];
   usuarioId: string;
   /** Quem vem selecionado no seletor (padrão: o próprio usuário). */
   responsavelPadrao?: string;
+  /** Quadro onde a demanda será criada. */
+  quadroId?: string;
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -41,6 +44,7 @@ export function BotaoNovaDemanda({
             membros={membros}
             usuarioId={usuarioId}
             responsavelPadrao={responsavelPadrao}
+            quadroId={quadroId}
             aoConcluir={() => {
               setAberto(false);
               router.refresh();

@@ -30,6 +30,8 @@ type Props = {
   usuarioId?: string;
   /** Responsável pré-selecionado ao criar (sobrepõe `usuarioId`). */
   responsavelPadrao?: string;
+  /** Quadro onde a demanda será criada (vai num input oculto). */
+  quadroId?: string;
 };
 
 export function FormularioDemanda({
@@ -40,6 +42,7 @@ export function FormularioDemanda({
   membros,
   usuarioId,
   responsavelPadrao,
+  quadroId,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -58,6 +61,7 @@ export function FormularioDemanda({
   return (
     <form action={acaoForm} className="space-y-5">
       {demanda && <input type="hidden" name="id" value={demanda.id} />}
+      {quadroId && <input type="hidden" name="quadro_id" value={quadroId} />}
 
       <div className="space-y-1.5">
         <label htmlFor="titulo" className="rotulo block">

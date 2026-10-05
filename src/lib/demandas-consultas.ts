@@ -17,6 +17,7 @@ export async function listarDemandas(
   status?: Status,
   busca?: string,
   donoId?: string,
+  quadroId?: string,
 ): Promise<DemandaComDono[]> {
   const supabase = await criarClienteServidor();
 
@@ -30,6 +31,9 @@ export async function listarDemandas(
   }
   if (donoId) {
     consulta = consulta.eq("usuario_id", donoId);
+  }
+  if (quadroId) {
+    consulta = consulta.eq("quadro_id", quadroId);
   }
 
   // Remove os caracteres que quebram a sintaxe do `.or()` do PostgREST.

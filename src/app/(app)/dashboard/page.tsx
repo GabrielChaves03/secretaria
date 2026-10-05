@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import { BotaoNovaDemanda } from "@/app/(app)/dashboard/_componentes/botao-nova-demanda";
-import {
-  QuadroDemandas,
-  type CartaoDemanda,
-  type ColunaQuadro,
-} from "@/app/(app)/dashboard/_componentes/quadro-demandas";
+import { QuadroDemandas } from "@/app/(app)/dashboard/_componentes/quadro-demandas";
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
 import { listarListas } from "@/lib/listas-consultas";
@@ -14,57 +10,9 @@ import {
   listarComentariosPorDemanda,
   type Comentario,
 } from "@/lib/comentarios-consultas";
-import { hojeISO, type DemandaComDono } from "@/lib/demandas";
+import { construirQuadro } from "@/lib/quadro-colunas";
 
 export const metadata = { title: "Demandas" };
-
-type ChaveAuto = "a_iniciar" | "em_andamento" | "concluida" | "atrasada";
-
-const COLUNAS_AUTO: {
-  chave: ChaveAuto;
-  /** Status que a demanda ganha ao ser solta aqui; "" = coluna só por prazo (não aceita soltar). */
-  status: string;
-  titulo: string;
-  dot: string;
-  barra: string;
-}[] = [
-  {
-    chave: "a_iniciar",
-    status: "pendente",
-    titulo: "A iniciar",
-    dot: "bg-[#5b8def]",
-    barra: "coluna-a-iniciar",
-  },
-  {
-    chave: "em_andamento",
-    status: "em_andamento",
-    titulo: "Em andamento",
-    dot: "bg-[#e0a63a]",
-    barra: "coluna-em-andamento",
-  },
-  {
-    chave: "concluida",
-    status: "concluida",
-    titulo: "Concluídas",
-    dot: "bg-accent",
-    barra: "coluna-concluida",
-  },
-  { chave: "atrasada", status: "", titulo: "Pendentes", dot: "bg-danger", barra: "coluna-pendente" },
-];
-
-/**
- * Coluna automática de uma demanda:
- * - Concluídas: status "concluida";
- * - Pendentes: não concluída (iniciada ou não) e com o prazo de entrega vencido;
- * - A iniciar: status "pendente" (recém-criada, ninguém começou) dentro do prazo;
- * - Em andamento: status "em_andamento" dentro do prazo.
- */
-function colunaAutoDe(d: DemandaComDono, hoje: string): ChaveAuto {
-  if (d.status === "concluida") return "concluida";
-  if (d.data_entrega && d.data_entrega < hoje) return "atrasada";
-  if (d.status === "pendente") return "a_iniciar";
-  return "em_andamento";
-}
 
 export default async function PaginaDashboard({
   searchParams,
@@ -87,49 +35,10 @@ export default async function PaginaDashboard({
     demandas.map((d) => d.id),
   );
 
-  const hoje = hojeISO();
-  const listasVisiveis = new Set(listas.map((l) => l.id));
-
-  // Colunas do quadro: 3 automáticas + uma por lista personalizada.
-  // `token` = chave de agrupamento/identidade; `destino` = o que `moverDemanda`
-  // recebe ao soltar (troca de status nas automáticas, lista_id nas listas).
-  const colunas: ColunaQuadro[] = [
-    ...COLUNAS_AUTO.map((c) => ({
-      token: `auto:${c.chave}`,
-      destino: c.status ? `status:${c.status}` : "",
-      titulo: c.titulo,
-      tipo: "auto" as const,
-      dot: c.dot,
-      barra: c.barra,
-    })),
-    ...listas.map((l) => ({
-      token: `lista:${l.id}`,
-      destino: `lista:${l.id}`,
-      titulo: l.nome,
-      tipo: "lista" as const,
-      listaId: l.id,
-    })),
-  ];
-
-  // Distribui as demandas pelas colunas.
-  const cardsPorColuna: Record<string, CartaoDemanda[]> = {};
-  for (const col of colunas) cardsPorColuna[col.token] = [];
-
-  for (const d of demandas) {
-    const naLista = d.lista_id && listasVisiveis.has(d.lista_id);
-    const tokenAtual = naLista
-      ? `lista:${d.lista_id}`
-      : `auto:${colunaAutoDe(d, hoje)}`;
-    const card: CartaoDemanda = {
-      ...d,
-      atrasada:
-        d.status !== "concluida" &&
-        !!d.data_entrega &&
-        d.data_entrega < hoje,
-      tokenAtual,
-    };
-    (cardsPorColuna[tokenAtual] ??= []).push(card);
-  }
+  const { colunas, cardsPorColuna } = construirQuadro(
+    demandas,
+    listas.map((l) => ({ id: l.id, nome: l.nome })),
+  );
 
   const comentariosPorDemanda: Record<string, Comentario[]> =
     Object.fromEntries(comentariosMapa);

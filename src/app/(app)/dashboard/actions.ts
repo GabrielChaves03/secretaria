@@ -18,6 +18,9 @@ function lerCampos(formData: FormData) {
     dificuldade: String(formData.get("dificuldade") ?? "").trim(),
     /** Só vem no formulário do chefe; vazio = não mexe no responsável. */
     responsavelId: String(formData.get("responsavel_id") ?? "").trim(),
+    /** Quadro onde criar a demanda (vazio = sem quadro). */
+    quadroId: String(formData.get("quadro_id") ?? "").trim(),
+    grupo: String(formData.get("grupo") ?? "").trim(),
   };
 }
 
@@ -41,7 +44,7 @@ export async function criarDemanda(
   formData: FormData,
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
-  const { titulo, descricao, dataEntrega, dificuldade, responsavelId } =
+  const { titulo, descricao, dataEntrega, dificuldade, responsavelId, quadroId, grupo } =
     lerCampos(formData);
 
   if (!titulo) return { erro: "Informe o título." };
@@ -58,6 +61,8 @@ export async function criarDemanda(
       descricao: descricao || null,
       data_entrega: dataEntrega || null,
       dificuldade,
+      quadro_id: quadroId || null,
+      grupo: grupo || null,
     })
     .select("id")
     .single();

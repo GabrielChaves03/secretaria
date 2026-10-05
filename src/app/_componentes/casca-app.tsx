@@ -6,6 +6,7 @@ import {
   contarNaoLidas,
   listarNotificacoes,
 } from "@/lib/notificacoes-consultas";
+import { listarOperacoesComQuadros } from "@/lib/operacoes-consultas";
 
 /**
  * Casca da área logada: barra do topo (logo + busca + notificações + perfil),
@@ -14,9 +15,10 @@ import {
  */
 export async function CascaApp({ children }: { children: ReactNode }) {
   const perfil = await requererEscritorio();
-  const [naoLidas, notificacoes] = await Promise.all([
+  const [naoLidas, notificacoes, operacoes] = await Promise.all([
     contarNaoLidas(),
     listarNotificacoes(),
+    listarOperacoesComQuadros(),
   ]);
 
   return (
@@ -29,7 +31,10 @@ export async function CascaApp({ children }: { children: ReactNode }) {
         notificacoes={notificacoes}
       />
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <BarraLateral ehChefe={perfil.papel === "chefe"} />
+        <BarraLateral
+          ehChefe={perfil.papel === "chefe"}
+          operacoes={operacoes}
+        />
         <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </div>

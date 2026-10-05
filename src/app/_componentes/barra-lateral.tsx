@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { OperacoesNav } from "@/app/(app)/_componentes/operacoes-nav";
+import type { OperacaoComQuadros } from "@/lib/operacoes";
 import {
   CalendarDays,
   ChevronDown,
@@ -68,7 +70,13 @@ const OUTROS: ItemNav[] = [
   },
 ];
 
-export function BarraLateral({ ehChefe }: { ehChefe: boolean }) {
+export function BarraLateral({
+  ehChefe,
+  operacoes,
+}: {
+  ehChefe: boolean;
+  operacoes: OperacaoComQuadros[];
+}) {
   const caminho = usePathname();
   const [demandasAberto, setDemandasAberto] = useState(true);
 
@@ -117,6 +125,9 @@ export function BarraLateral({ ehChefe }: { ehChefe: boolean }) {
             <ItemLink key={it.href} item={it} ativo={it.ativo(caminho)} />
           ))}
         </nav>
+        <div className="border-t border-border px-2 py-2">
+          <OperacoesNav operacoes={operacoes} ehChefe={ehChefe} />
+        </div>
       </aside>
 
       {/* --- Mobile: faixa de navegação logo abaixo da barra do topo --- */}

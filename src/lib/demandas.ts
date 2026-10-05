@@ -29,6 +29,13 @@ export type Demanda = {
   status: Status;
   /** Lista personalizada do quadro; `null` = colunas automáticas por status/prazo. */
   lista_id: string | null;
+  /** Quadro (board) a que a demanda pertence; `null` = legado sem quadro. */
+  quadro_id: string | null;
+  /** Grupo (seção) dentro do quadro. */
+  grupo: string | null;
+  prioridade: string | null;
+  link: string | null;
+  campos: Record<string, string>;
   criado_em: string;
 };
 
@@ -84,4 +91,23 @@ export function estaAtrasada(
   hoje: string,
 ): boolean {
   return d.status !== "concluida" && !!d.data_entrega && d.data_entrega < hoje;
+}
+
+export type ChaveAuto = "a_iniciar" | "em_andamento" | "concluida" | "atrasada";
+
+/**
+ * Coluna automática de uma demanda no quadro:
+ * - Concluídas: status "concluida";
+ * - Pendentes (atrasada): não concluída e com prazo vencido;
+ * - A iniciar: status "pendente" dentro do prazo;
+ * - Em andamento: status "em_andamento" dentro do prazo.
+ */
+export function colunaAutoDe(
+  d: Pick<Demanda, "status" | "data_entrega">,
+  hoje: string,
+): ChaveAuto {
+  if (d.status === "concluida") return "concluida";
+  if (d.data_entrega && d.data_entrega < hoje) return "atrasada";
+  if (d.status === "pendente") return "a_iniciar";
+  return "em_andamento";
 }
