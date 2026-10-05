@@ -1,7 +1,7 @@
 import "server-only";
 
 import { criarClienteServidor } from "@/lib/supabase/server";
-import type { Demanda, DemandaComDono, Status } from "@/lib/demandas";
+import type { Demanda, DemandaComDono } from "@/lib/demandas";
 
 /**
  * Lista as demandas visíveis para o usuário logado, da mais recente para a
@@ -14,7 +14,7 @@ import type { Demanda, DemandaComDono, Status } from "@/lib/demandas";
  * `usuarios`) — relevante na visão do chefe.
  */
 export async function listarDemandas(
-  status?: Status,
+  status?: string,
   busca?: string,
   donoId?: string,
   quadroId?: string,

@@ -8,6 +8,7 @@ import { obterPerfil } from "@/lib/perfil-consultas";
 import { obterDemanda } from "@/lib/demandas-consultas";
 import { listarComentarios } from "@/lib/comentarios-consultas";
 import { listarMembros } from "@/lib/escritorios-consultas";
+import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 
 export const metadata = { title: "Editar demanda" };
 
@@ -22,9 +23,10 @@ export default async function PaginaEditarDemanda({
   const demanda = await obterDemanda(id);
   if (!demanda) notFound();
 
-  const [comentarios, membros] = await Promise.all([
+  const [comentarios, membros, config] = await Promise.all([
     listarComentarios(demanda.id),
     perfil.papel === "chefe" ? listarMembros() : Promise.resolve(undefined),
+    obterConfigDemandas(),
   ]);
 
   return (
@@ -47,6 +49,7 @@ export default async function PaginaEditarDemanda({
           rotuloEnvio="Salvar alterações"
           membros={membros}
           usuarioId={perfil.id}
+          statuses={config.statuses}
         />
       </div>
 

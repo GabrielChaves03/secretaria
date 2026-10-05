@@ -10,6 +10,7 @@ import {
   type Comentario,
 } from "@/lib/comentarios-consultas";
 import { obterOperacao, obterQuadro } from "@/lib/operacoes-consultas";
+import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 import { construirQuadro } from "@/lib/quadro-colunas";
 
 export const metadata = { title: "Quadro" };
@@ -27,9 +28,10 @@ export default async function PaginaQuadro({
   if (!quadro) notFound();
   const operacao = await obterOperacao(quadro.operacao_id);
 
-  const [demandas, membros] = await Promise.all([
+  const [demandas, membros, config] = await Promise.all([
     listarDemandas(undefined, undefined, undefined, id),
     ehChefe ? listarMembros() : Promise.resolve(undefined),
+    obterConfigDemandas(),
   ]);
   const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
@@ -37,9 +39,7 @@ export default async function PaginaQuadro({
   const comentariosPorDemanda: Record<string, Comentario[]> =
     Object.fromEntries(comentariosMapa);
 
-  // Dentro de um quadro não há listas personalizadas (board por status).
-  const { colunas, cardsPorColuna } = construirQuadro(demandas, []);
-
+  const { colunas, cardsPorColuna } = construirQuadro(demandas, config);
   const responsavelPadrao = membros?.find((m) => m.papel === "funcionario")?.id;
 
   return (
@@ -59,10 +59,7 @@ export default async function PaginaQuadro({
             )}
           </div>
           <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ background: quadro.cor }}
-            />
+            <span className="h-3 w-3 rounded-full" style={{ background: quadro.cor }} />
             {quadro.nome}
           </h1>
         </div>
@@ -71,6 +68,7 @@ export default async function PaginaQuadro({
           usuarioId={perfil.id}
           responsavelPadrao={responsavelPadrao}
           quadroId={quadro.id}
+          statuses={config.statuses}
         />
       </header>
 
@@ -78,8 +76,9 @@ export default async function PaginaQuadro({
         colunas={colunas}
         cardsPorColuna={cardsPorColuna}
         comentariosPorDemanda={comentariosPorDemanda}
-        listas={[]}
         usuarioId={perfil.id}
+        statuses={config.statuses}
+        mostrarDono={ehChefe}
       />
     </main>
   );

@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { X } from "lucide-react";
-import { BotaoNovaDemanda } from "@/app/(app)/dashboard/_componentes/botao-nova-demanda";
 import { QuadroDemandas } from "@/app/(app)/dashboard/_componentes/quadro-demandas";
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarDemandas } from "@/lib/demandas-consultas";
-import { listarListas } from "@/lib/listas-consultas";
-import { listarMembros } from "@/lib/escritorios-consultas";
 import {
   listarComentariosPorDemanda,
   type Comentario,
 } from "@/lib/comentarios-consultas";
+import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 import { construirQuadro } from "@/lib/quadro-colunas";
 
-export const metadata = { title: "Demandas" };
+export const metadata = { title: "Meu Trabalho" };
 
+/**
+ * "Meu Trabalho": as demandas do usuário logado, de todos os quadros, num
+ * board por status. Criar demanda acontece dentro de um quadro (não aqui).
+ */
 export default async function PaginaDashboard({
   searchParams,
 }: {
@@ -22,37 +24,28 @@ export default async function PaginaDashboard({
   const perfil = await requererEscritorio();
   const { q: qBruto } = await searchParams;
   const busca = qBruto?.trim() || undefined;
-  const ehChefe = perfil.papel === "chefe";
 
-  // Quadro pessoal: só o que é da própria pessoa. (O chefe enxerga tudo pela
-  // RLS — as demandas dos funcionários ficam em /dashboard/equipe.)
-  const [demandas, listas, membros] = await Promise.all([
+  const [demandas, config] = await Promise.all([
     listarDemandas(undefined, busca, perfil.id),
-    listarListas(perfil.id),
-    ehChefe ? listarMembros() : Promise.resolve(undefined),
+    obterConfigDemandas(),
   ]);
   const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
   );
-
-  const { colunas, cardsPorColuna } = construirQuadro(
-    demandas,
-    listas.map((l) => ({ id: l.id, nome: l.nome })),
-  );
-
   const comentariosPorDemanda: Record<string, Comentario[]> =
     Object.fromEntries(comentariosMapa);
+
+  const { colunas, cardsPorColuna } = construirQuadro(demandas, config);
 
   return (
     <main className="flex w-full flex-1 flex-col px-4 py-6 md:px-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {ehChefe ? "Demandas pessoais" : "Demandas"}
-          </h1>
-          <p className="mt-0.5 text-sm text-fg-secondary">Suas demandas.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Meu Trabalho</h1>
+          <p className="mt-0.5 text-sm text-fg-secondary">
+            Suas demandas, em todos os quadros.
+          </p>
         </div>
-        <BotaoNovaDemanda membros={membros} usuarioId={perfil.id} />
       </header>
 
       {busca && (
@@ -80,8 +73,8 @@ export default async function PaginaDashboard({
           colunas={colunas}
           cardsPorColuna={cardsPorColuna}
           comentariosPorDemanda={comentariosPorDemanda}
-          listas={listas.map((l) => ({ id: l.id, nome: l.nome }))}
           usuarioId={perfil.id}
+          statuses={config.statuses}
         />
       )}
     </main>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DIFICULDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
+import { DIFICULDADES, PRIORIDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
 import type { EstadoDemanda } from "@/app/(app)/dashboard/actions";
 import type { Membro } from "@/lib/escritorios";
 
@@ -32,6 +32,8 @@ type Props = {
   responsavelPadrao?: string;
   /** Quadro onde a demanda será criada (vai num input oculto). */
   quadroId?: string;
+  /** Status configurados do escritório (para o seletor de status). */
+  statuses?: string[];
 };
 
 export function FormularioDemanda({
@@ -43,6 +45,7 @@ export function FormularioDemanda({
   usuarioId,
   responsavelPadrao,
   quadroId,
+  statuses,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -122,6 +125,61 @@ export function FormularioDemanda({
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        {statuses && statuses.length > 0 && (
+          <div className="space-y-1.5">
+            <label htmlFor="status" className="rotulo block">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              defaultValue={demanda?.status ?? statuses[0]}
+              className="campo"
+            >
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label htmlFor="prioridade" className="rotulo block">
+            Prioridade
+          </label>
+          <select
+            id="prioridade"
+            name="prioridade"
+            defaultValue={demanda?.prioridade ?? ""}
+            className="campo"
+          >
+            <option value="">—</option>
+            {PRIORIDADES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="link" className="rotulo block">
+          Link
+        </label>
+        <input
+          id="link"
+          name="link"
+          type="url"
+          defaultValue={demanda?.link ?? ""}
+          placeholder="https://..."
+          className="campo"
+        />
       </div>
 
       {membros && membros.length > 1 && (

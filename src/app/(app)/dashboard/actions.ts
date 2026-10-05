@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requererUsuario } from "@/lib/auth";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { ehDificuldade, ehStatus, ROTULO_STATUS, type Status } from "@/lib/demandas";
+import { ehDificuldade } from "@/lib/demandas";
 import { avisarDono } from "@/lib/whatsapp-envio";
 import { formatarDiaMes } from "@/lib/whatsapp";
 
@@ -21,6 +21,9 @@ function lerCampos(formData: FormData) {
     /** Quadro onde criar a demanda (vazio = sem quadro). */
     quadroId: String(formData.get("quadro_id") ?? "").trim(),
     grupo: String(formData.get("grupo") ?? "").trim(),
+    status: String(formData.get("status") ?? "").trim(),
+    prioridade: String(formData.get("prioridade") ?? "").trim(),
+    link: String(formData.get("link") ?? "").trim(),
   };
 }
 
@@ -44,8 +47,18 @@ export async function criarDemanda(
   formData: FormData,
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
-  const { titulo, descricao, dataEntrega, dificuldade, responsavelId, quadroId, grupo } =
-    lerCampos(formData);
+  const {
+    titulo,
+    descricao,
+    dataEntrega,
+    dificuldade,
+    responsavelId,
+    quadroId,
+    grupo,
+    status,
+    prioridade,
+    link,
+  } = lerCampos(formData);
 
   if (!titulo) return { erro: "Informe o título." };
   if (!ehDificuldade(dificuldade)) return { erro: "Dificuldade inválida." };
@@ -63,6 +76,9 @@ export async function criarDemanda(
       dificuldade,
       quadro_id: quadroId || null,
       grupo: grupo || null,
+      status: status || "A fazer",
+      prioridade: prioridade || null,
+      link: link || null,
     })
     .select("id")
     .single();
@@ -78,7 +94,7 @@ export async function criarDemanda(
     });
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
   return { ok: true };
 }
 
@@ -92,7 +108,7 @@ export async function atualizarDemanda(
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
   const id = String(formData.get("id") ?? "");
-  const { titulo, descricao, dataEntrega, dificuldade, responsavelId } =
+  const { titulo, descricao, dataEntrega, dificuldade, responsavelId, status, prioridade, link } =
     lerCampos(formData);
 
   if (!id) return { erro: "Demanda não identificada." };
@@ -103,10 +119,11 @@ export async function atualizarDemanda(
 
   const { data: antes } = await supabase
     .from("demandas")
-    .select("usuario_id")
+    .select("usuario_id, status")
     .eq("id", id)
     .maybeSingle();
   const donoAnterior = antes?.usuario_id as string | undefined;
+  const statusAnterior = antes?.status as string | undefined;
 
   const { data: demanda, error } = await supabase
     .from("demandas")
@@ -115,10 +132,13 @@ export async function atualizarDemanda(
       descricao: descricao || null,
       data_entrega: dataEntrega || null,
       dificuldade,
+      prioridade: prioridade || null,
+      link: link || null,
+      ...(status ? { status } : {}),
       ...(responsavelId ? { usuario_id: responsavelId } : {}),
     })
     .eq("id", id)
-    .select("usuario_id")
+    .select("usuario_id, titulo")
     .maybeSingle();
 
   if (error) return { erro: error.message };
@@ -126,49 +146,40 @@ export async function atualizarDemanda(
   const donoId = demanda?.usuario_id as string | undefined;
   if (donoId && donoId !== usuario.id) {
     const reatribuida = donoId !== donoAnterior;
-    await avisarDono({
-      donoId,
-      tipo: reatribuida ? "atribuicao" : "status",
-      corpo: reatribuida
-        ? corpoAtribuicao(titulo, dataEntrega, descricao)
-        : `✏️ A demanda *${titulo}* foi atualizada.`,
-      demandaId: id,
-    });
+    const mudouStatus = !!status && status !== statusAnterior;
+    if (reatribuida) {
+      await avisarDono({
+        donoId,
+        tipo: "atribuicao",
+        corpo: corpoAtribuicao(titulo, dataEntrega, descricao),
+        demandaId: id,
+      });
+    } else if (mudouStatus) {
+      await avisarDono({
+        donoId,
+        tipo: "status",
+        corpo: `🔄 A demanda *${titulo}* agora está *${status}*.`,
+        demandaId: id,
+      });
+    } else {
+      await avisarDono({
+        donoId,
+        tipo: "status",
+        corpo: `✏️ A demanda *${titulo}* foi atualizada.`,
+        demandaId: id,
+      });
+    }
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
   return { ok: true };
-}
-
-/**
- * Troca o status de uma demanda (pendente / em_andamento / concluida).
- * Usada pelos botões da listagem. Dono ou chefe — a RLS decide.
- */
-export async function definirStatusDemanda(formData: FormData) {
-  const usuario = await requererUsuario();
-  const id = String(formData.get("id") ?? "");
-  const status = String(formData.get("status") ?? "");
-
-  if (!id || !ehStatus(status)) return;
-
-  const supabase = await criarClienteServidor();
-  const { data: demanda } = await supabase
-    .from("demandas")
-    .update({ status })
-    .eq("id", id)
-    .select("usuario_id, titulo")
-    .maybeSingle();
-
-  await avisarMudancaStatus(demanda, id, status, usuario.id);
-
-  revalidatePath("/dashboard");
 }
 
 /** Aviso de WhatsApp de troca de status, se quem mudou não é o dono. */
 async function avisarMudancaStatus(
   demanda: { usuario_id: unknown; titulo: unknown } | null,
   id: string,
-  status: Status,
+  status: string,
   atorId: string,
 ) {
   const donoId = demanda?.usuario_id as string | undefined;
@@ -176,7 +187,7 @@ async function avisarMudancaStatus(
   await avisarDono({
     donoId,
     tipo: "status",
-    corpo: `🔄 A demanda *${demanda?.titulo}* agora está *${ROTULO_STATUS[status]}*.`,
+    corpo: `🔄 A demanda *${demanda?.titulo}* agora está *${status}*.`,
     demandaId: id,
   });
 }
@@ -187,19 +198,17 @@ async function avisarMudancaStatus(
 export async function apagarDemanda(formData: FormData) {
   await requererUsuario();
   const id = String(formData.get("id") ?? "");
-
   if (!id) return;
 
   const supabase = await criarClienteServidor();
   await supabase.from("demandas").delete().eq("id", id);
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 /**
  * Adiciona um comentário a uma demanda. A RLS garante que só o dono da
- * demanda ou um chefe conseguem inserir. Guarda o nome do autor junto para
- * a listagem e para o texto da notificação.
+ * demanda ou um chefe conseguem inserir. Guarda o nome do autor junto.
  */
 export async function adicionarComentario(formData: FormData) {
   const usuario = await requererUsuario();
@@ -240,100 +249,42 @@ export async function adicionarComentario(formData: FormData) {
     });
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
   revalidatePath(`/dashboard/${demandaId}/editar`);
 }
 
 /**
- * Cria uma lista personalizada do quadro para o usuário logado.
- */
-export async function criarLista(formData: FormData) {
-  const usuario = await requererUsuario();
-  const nome = String(formData.get("nome") ?? "").trim();
-
-  if (!nome) return;
-
-  const supabase = await criarClienteServidor();
-  await supabase.from("listas").insert({ usuario_id: usuario.id, nome });
-
-  revalidatePath("/dashboard");
-}
-
-/**
- * Renomeia uma lista. Dono ou chefe — a RLS decide.
- */
-export async function renomearLista(formData: FormData) {
-  await requererUsuario();
-  const id = String(formData.get("id") ?? "");
-  const nome = String(formData.get("nome") ?? "").trim();
-
-  if (!id || !nome) return;
-
-  const supabase = await criarClienteServidor();
-  await supabase.from("listas").update({ nome }).eq("id", id);
-
-  revalidatePath("/dashboard");
-}
-
-/**
- * Apaga uma lista. Os cards dela voltam para o fluxo automático
- * (demandas.lista_id vira null via ON DELETE SET NULL). Dono ou chefe.
- */
-export async function apagarLista(formData: FormData) {
-  await requererUsuario();
-  const id = String(formData.get("id") ?? "");
-
-  if (!id) return;
-
-  const supabase = await criarClienteServidor();
-  await supabase.from("listas").delete().eq("id", id);
-
-  revalidatePath("/dashboard");
-}
-
-/**
- * Move uma demanda entre colunas do quadro:
- * - `"status:<pendente|em_andamento|concluida>"` → troca o status e tira de
- *   qualquer lista (volta pras 3 colunas automáticas);
- * - `"lista:<uuid>"` → coloca na lista indicada, sem mexer no status.
+ * Move uma demanda para outro status: `destino = "status:<nome>"`.
+ * Dono ou chefe — a RLS decide. Avisa o dono no WhatsApp se não foi ele.
  */
 export async function moverDemanda(id: string, destino: string) {
   const usuario = await requererUsuario();
-  if (!id || !destino) return;
+  if (!id || !destino.startsWith("status:")) return;
+  const status = destino.slice("status:".length).trim();
+  if (!status) return;
 
   const supabase = await criarClienteServidor();
+  const { data: antes } = await supabase
+    .from("demandas")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  const { data: demanda } = await supabase
+    .from("demandas")
+    .update({ status })
+    .eq("id", id)
+    .select("usuario_id, titulo")
+    .maybeSingle();
 
-  if (destino.startsWith("lista:")) {
-    const listaId = destino.slice("lista:".length);
-    if (!listaId) return;
-    await supabase.from("demandas").update({ lista_id: listaId }).eq("id", id);
-  } else if (destino.startsWith("status:")) {
-    const status = destino.slice("status:".length);
-    if (!ehStatus(status)) return;
-    const { data: antes } = await supabase
-      .from("demandas")
-      .select("status")
-      .eq("id", id)
-      .maybeSingle();
-    const { data: demanda } = await supabase
-      .from("demandas")
-      .update({ status, lista_id: null })
-      .eq("id", id)
-      .select("usuario_id, titulo")
-      .maybeSingle();
-    if (antes?.status !== status) {
-      await avisarMudancaStatus(demanda, id, status, usuario.id);
-    }
-  } else {
-    return;
+  if (antes?.status !== status) {
+    await avisarMudancaStatus(demanda, id, status, usuario.id);
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/dashboard", "layout");
 }
 
 /**
  * Marca todas as notificações não lidas do usuário logado como lidas.
- * Chamada ao abrir a página de notificações.
  */
 export async function marcarNotificacoesLidas() {
   const usuario = await requererUsuario();

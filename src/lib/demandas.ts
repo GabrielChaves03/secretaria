@@ -1,18 +1,24 @@
 /**
  * Tipos, constantes e rótulos das demandas.
  *
- * Este módulo não importa nada de servidor de propósito: é usado tanto por
- * Server Components/Actions quanto pelo formulário (Client Component). As
- * consultas ao banco ficam em `demandas-consultas.ts` (server-only).
+ * Client-safe: usado tanto por Server Components/Actions quanto pelos
+ * componentes de UI. As consultas ao banco ficam em `demandas-consultas.ts`.
+ *
+ * Status (desde a fusão com o Avant) é TEXTO LIVRE, customizável por
+ * escritório (`escritorio_demandas_config.statuses`). "Concluído" é o status
+ * terminal (progresso e atraso levam isso em conta).
  */
 
 export const DIFICULDADES = ["facil", "media", "dificil"] as const;
-export const STATUS = ["pendente", "em_andamento", "concluida"] as const;
+export const PRIORIDADES = ["Alta", "Média", "Baixa"] as const;
 export const PAPEIS = ["funcionario", "chefe"] as const;
 
 export type Dificuldade = (typeof DIFICULDADES)[number];
-export type Status = (typeof STATUS)[number];
+export type Prioridade = (typeof PRIORIDADES)[number];
 export type Papel = (typeof PAPEIS)[number];
+
+/** Status terminal (demanda concluída). Mesmo nome que o Avant usa. */
+export const STATUS_CONCLUIDO = "Concluído";
 
 export const ROTULO_PAPEL: Record<Papel, string> = {
   funcionario: "Funcionário",
@@ -26,10 +32,10 @@ export type Demanda = {
   descricao: string | null;
   data_entrega: string | null;
   dificuldade: Dificuldade;
-  status: Status;
-  /** Lista personalizada do quadro; `null` = colunas automáticas por status/prazo. */
+  status: string;
+  /** Lista personalizada (legado); hoje o board usa status/grupo. */
   lista_id: string | null;
-  /** Quadro (board) a que a demanda pertence; `null` = legado sem quadro. */
+  /** Quadro (board) a que a demanda pertence. */
   quadro_id: string | null;
   /** Grupo (seção) dentro do quadro. */
   grupo: string | null;
@@ -48,19 +54,6 @@ export const ROTULO_DIFICULDADE: Record<Dificuldade, string> = {
   dificil: "Difícil",
 };
 
-export const ROTULO_STATUS: Record<Status, string> = {
-  pendente: "A iniciar",
-  em_andamento: "Em andamento",
-  concluida: "Concluída",
-};
-
-/** Classe da pílula (ver globals.css) por status. */
-export const PILL_STATUS: Record<Status, string> = {
-  pendente: "pill pill-blue",
-  em_andamento: "pill pill-yellow",
-  concluida: "pill pill-green",
-};
-
 /** Classe da pílula por dificuldade — verde/amarelo/vermelho. */
 export const PILL_DIFICULDADE: Record<Dificuldade, string> = {
   facil: "pill pill-green",
@@ -68,14 +61,32 @@ export const PILL_DIFICULDADE: Record<Dificuldade, string> = {
   dificil: "pill pill-red",
 };
 
-export function ehStatus(valor: string | null | undefined): valor is Status {
-  return !!valor && (STATUS as readonly string[]).includes(valor);
-}
+/** Classe da pílula por prioridade. */
+export const PILL_PRIORIDADE: Record<string, string> = {
+  Alta: "pill pill-red",
+  Média: "pill pill-yellow",
+  Baixa: "pill pill-blue",
+};
 
 export function ehDificuldade(
   valor: string | null | undefined,
 ): valor is Dificuldade {
   return !!valor && (DIFICULDADES as readonly string[]).includes(valor);
+}
+
+export function ehConcluido(status: string | null | undefined): boolean {
+  return status === STATUS_CONCLUIDO;
+}
+
+/** Cor de texto legível (preto/branco) sobre um fundo hex. */
+export function corTextoSobre(hex: string): string {
+  const h = hex.replace("#", "");
+  if (h.length < 6) return "#fff";
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  // Luminância relativa aproximada.
+  return r * 0.299 + g * 0.587 + b * 0.114 > 150 ? "#1a1a1a" : "#fff";
 }
 
 /** Data de hoje no formato YYYY-MM-DD, no fuso de São Paulo. */
@@ -90,24 +101,5 @@ export function estaAtrasada(
   d: Pick<Demanda, "status" | "data_entrega">,
   hoje: string,
 ): boolean {
-  return d.status !== "concluida" && !!d.data_entrega && d.data_entrega < hoje;
-}
-
-export type ChaveAuto = "a_iniciar" | "em_andamento" | "concluida" | "atrasada";
-
-/**
- * Coluna automática de uma demanda no quadro:
- * - Concluídas: status "concluida";
- * - Pendentes (atrasada): não concluída e com prazo vencido;
- * - A iniciar: status "pendente" dentro do prazo;
- * - Em andamento: status "em_andamento" dentro do prazo.
- */
-export function colunaAutoDe(
-  d: Pick<Demanda, "status" | "data_entrega">,
-  hoje: string,
-): ChaveAuto {
-  if (d.status === "concluida") return "concluida";
-  if (d.data_entrega && d.data_entrega < hoje) return "atrasada";
-  if (d.status === "pendente") return "a_iniciar";
-  return "em_andamento";
+  return !ehConcluido(d.status) && !!d.data_entrega && d.data_entrega < hoje;
 }

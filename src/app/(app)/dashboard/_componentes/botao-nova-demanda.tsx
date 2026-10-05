@@ -13,6 +13,7 @@ export function BotaoNovaDemanda({
   usuarioId,
   responsavelPadrao,
   quadroId,
+  statuses,
 }: {
   /** Só para o chefe — habilita o seletor de responsável. */
   membros?: Pick<Membro, "id" | "nome">[];
@@ -21,6 +22,8 @@ export function BotaoNovaDemanda({
   responsavelPadrao?: string;
   /** Quadro onde a demanda será criada. */
   quadroId?: string;
+  /** Status configurados (para o seletor de status). */
+  statuses?: string[];
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -45,6 +48,7 @@ export function BotaoNovaDemanda({
             usuarioId={usuarioId}
             responsavelPadrao={responsavelPadrao}
             quadroId={quadroId}
+            statuses={statuses}
             aoConcluir={() => {
               setAberto(false);
               router.refresh();
