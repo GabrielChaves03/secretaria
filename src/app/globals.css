@@ -116,7 +116,7 @@ body {
   background-image:
     radial-gradient(60% 50% at 12% -8%, rgba(23, 201, 100, 0.14), transparent 60%),
     radial-gradient(50% 45% at 100% 0%, rgba(70, 110, 200, 0.1), transparent 62%),
-    linear-gradient(180deg, rgba(4, 5, 8, 0.72) 0%, rgba(4, 5, 8, 0.88) 45%, rgba(4, 5, 8, 0.96) 100%),
+    linear-gradient(180deg, rgba(4, 5, 8, 0.88) 0%, rgba(4, 5, 8, 0.94) 45%, rgba(4, 5, 8, 0.985) 100%),
     var(--fundo-imagem, url("/fundos/escritorio-noturno.png"));
   background-size: auto, auto, auto, cover;
   background-position: center, center, center, center 68%;

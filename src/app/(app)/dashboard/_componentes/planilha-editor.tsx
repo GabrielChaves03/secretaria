@@ -50,7 +50,7 @@ export function PlanilhaEditor({
 
   return (
     <div className="mt-4">
-      <div className="overflow-x-auto rounded-[var(--radius-lg)] shadow-[inset_0_0_0_1px_var(--border)]">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-hover/40 text-left text-xs text-fg-secondary">

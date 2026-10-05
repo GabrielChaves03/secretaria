@@ -205,7 +205,7 @@ function GrupoTabela({
   const pct = total ? Math.round((concluidas / total) * 100) : 0;
 
   return (
-    <section className="overflow-hidden rounded-[var(--radius-lg)] shadow-[inset_0_0_0_1px_var(--border)]">
+    <section className="overflow-hidden rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]">
       {/* Cabeçalho do grupo */}
       <div
         className="flex items-center gap-2 px-3 py-2"
