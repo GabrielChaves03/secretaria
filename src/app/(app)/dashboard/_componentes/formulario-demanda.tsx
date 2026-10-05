@@ -34,6 +34,8 @@ type Props = {
   quadroId?: string;
   /** Status configurados do escritório (para o seletor de status). */
   statuses?: string[];
+  /** Grupo (seção do quadro) onde criar — vai num input oculto. */
+  grupo?: string;
 };
 
 export function FormularioDemanda({
@@ -46,6 +48,7 @@ export function FormularioDemanda({
   responsavelPadrao,
   quadroId,
   statuses,
+  grupo,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -65,6 +68,7 @@ export function FormularioDemanda({
     <form action={acaoForm} className="space-y-5">
       {demanda && <input type="hidden" name="id" value={demanda.id} />}
       {quadroId && <input type="hidden" name="quadro_id" value={quadroId} />}
+      {grupo && <input type="hidden" name="grupo" value={grupo} />}
 
       <div className="space-y-1.5">
         <label htmlFor="titulo" className="rotulo block">
