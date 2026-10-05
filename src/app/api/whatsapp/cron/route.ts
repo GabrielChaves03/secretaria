@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthorizedCronRequest } from "@/lib/manychat/cron-auth";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { processarAvisosAgendados } from "@/lib/whatsapp-agendados";
 
 export const maxDuration = 60;

@@ -8,9 +8,7 @@ import type { OperacaoComQuadros } from "@/lib/operacoes";
 import {
   CalendarDays,
   ChevronDown,
-  Clapperboard,
   ListTodo,
-  PlugZap,
   User,
   Users,
   type LucideIcon,
@@ -55,18 +53,6 @@ const OUTROS: ItemNav[] = [
     rotulo: "Calendário",
     Icone: CalendarDays,
     ativo: (c) => c.startsWith("/calendario"),
-  },
-  {
-    href: "/manychat",
-    rotulo: "ManyChat",
-    Icone: PlugZap,
-    ativo: (c) => c.startsWith("/manychat"),
-  },
-  {
-    href: "/editor-de-videos",
-    rotulo: "Editor de Vídeos",
-    Icone: Clapperboard,
-    ativo: (c) => c.startsWith("/editor-de-videos"),
   },
 ];
 

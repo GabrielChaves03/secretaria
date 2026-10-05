@@ -6,6 +6,17 @@ App interno para a equipe registrar e acompanhar demandas da empresa.
 No ar na **Vercel** (`https://secretaria-chaves5.vercel.app`), deploy contínuo a cada `git push` em `main`
 (migrado da Netlify em 24/09 — ver "Deploy: por que Vercel" abaixo).
 
+## Nota: ManyChat e Editor de Vídeos removidos (05/10)
+
+Os dois eram integrações dentro da Secretária e foram **retirados do app** — cada um é um projeto
+separado com repo próprio: **ManyChat** = `dev/ManyChat Claude` (`GabrielChaves03/manychat-claude`);
+**Editor de Vídeos** = `dev/GitHub Editor de Videos` (`GOMAPET/dashboard-edicao-video`). Removido da
+Secretária: rotas (`/manychat`, `/editor-de-videos`), `src/app/api/manychat/`, `src/lib/manychat/`,
+`src/lib/manychat-*`, `src/lib/video-pedidos*`, itens do menu, env `INSTAGRAM_*` e os pg_cron
+`manychat-drenar-fila`/`manychat-renovar-token`. **Mantidos no Supabase** (dados, reversível): tabelas
+`instagram_accounts`/`automations`/`followups`/`contacts`/`queue`/`events`/`video_pedidos` (migrations
+0013–0015) e o bucket `videos-pedidos`. `cron-auth` virou `src/lib/cron-auth.ts` (o cron do WhatsApp usa).
+
 ## Stack
 
 | Camada        | Tecnologia                                              |
@@ -62,13 +73,10 @@ Ação: `salvarAparencia()` em `ajustes/actions.ts` (valida a chave contra o cat
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` — só usada pelo motor do ManyChat (`src/lib/manychat/`, via
-  `src/lib/supabase/admin.ts`), que roda sem sessão de usuário (webhook/cron/drenador). **Nunca**
-  exposta ao navegador, nunca usada fora desses arquivos.
-- `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` — credenciais do
-  App do Meta for Developers usado pelo ManyChat (mesmo App do antigo `ig-dm-automacao`).
-- `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e as rotas
-  `/api/manychat/cron/*` e `/api/whatsapp/cron` (no Vault do Supabase: `manychat_cron_secret`).
+- `SUPABASE_SERVICE_ROLE_KEY` — usada só pelo cron de avisos de WhatsApp (`src/lib/whatsapp-agendados.ts`,
+  via `src/lib/supabase/admin.ts`), que roda sem sessão de usuário. **Nunca** exposta ao navegador.
+- `CRON_SECRET` — segredo compartilhado entre o `pg_cron` do Supabase e a rota
+  `/api/whatsapp/cron` (no Vault do Supabase: `manychat_cron_secret`, nome herdado).
 - `WHATSAPP_GATEWAY_URL` / `WHATSAPP_GATEWAY_TOKEN` — gateway padrão, usado quando o escritório não
   preencheu URL própria em Ajustes. **Desde 28/09 = Evolution API v2.3.7 do programador sênior parceiro,
   servidor `https://evolution-api-k91lv.169.58.90.253.sslip.io`** (painel em `/manager`), **instância
@@ -295,35 +303,6 @@ public/
 ## Estado
 
 - `.env.local` preenchido (inclui `ADMIN_EMAILS`); migrations `0001`–`0018` aplicadas.
-- **ManyChat em `/manychat` (12/09):** 1ª peça da integração "Central de Agentes dentro do
-  Secretária" a ser efetivamente lançada (o Roteirista Digital foi tentado antes e revertido por
-  depender de custo de API — ver histórico). Automação de DM do Instagram por regras/palavra-chave,
-  sem IA nenhuma — roda 100% de graça (Meta não cobra por esse uso). Código completo e testado
-  (`npm run build` limpo; isolamento multi-tenant confirmado simulando sessões de dois escritórios
-  reais, incluindo tentativa de "roubo" de conta já conectada por outro escritório — bloqueada pela
-  RLS de `instagram_accounts`, e tentativa de automação apontando pra conta de outro escritório —
-  bloqueada pela RLS de `automations`). **Ainda não publicado** (código local, não commitado) e
-  falta o corte de verdade: configurar `SUPABASE_SERVICE_ROLE_KEY`/`INSTAGRAM_APP_ID`/
-  `INSTAGRAM_APP_SECRET`/`INSTAGRAM_WEBHOOK_VERIFY_TOKEN`/`CRON_SECRET`, agendar `pg_cron`+`pg_net`
-  no Supabase do Secretária (mesmo padrão Vault do app antigo), e atualizar a Callback URL/Redirect
-  URI no painel do Meta for Developers pra apontar pro Secretária em vez do app antigo na Vercel.
-- **Editor de Vídeos em `/editor-de-videos` (21/09):** 2ª peça da integração "Central de
-  Agentes dentro do Secretária" (depois do ManyChat). **Fila manual, sem automação de
-  verdade**: o agente de edição (skills `video-use` + `HyperFrames`, projeto separado
-  "Video Editor Teste") hoje só roda pelo Claude Code local do admin, sem servidor — então
-  o app só guarda o pedido (vídeo bruto + instruções, upload direto pro Storage) com
-  status `pendente`; o admin (e-mail em `ADMIN_EMAILS`) vê uma seção extra "Fila de todos
-  os escritórios" na mesma página, baixa o original, edita manualmente e sobe o vídeo
-  editado de volta pelo próprio painel (`status` vira `concluido`, aparece um botão de
-  download pro escritório que pediu). Sem policy de UPDATE pra sessão normal de propósito
-  — só o admin muda o status, via `supabaseAdmin()` (service role) depois de checar
-  `ehAdmin()` no código (não é RLS). Botão de "estilo de legenda" só reservado/desabilitado
-  por enquanto — a legenda automática do agente ainda não foi validada. Bucket
-  `videos-pedidos` com `file_size_limit` de 2GiB setado direto na tabela `storage.buckets`
-  (migration 0015) — se o plano do Supabase tiver um teto menor, o upload falha com erro
-  do próprio Storage (checar em Studio → Settings → Storage nesse caso). Por pedido do
-  usuário, não há retenção: o escritório pode apagar o pedido (original + editado) a
-  qualquer momento depois de baixar, não existe limpeza automática ainda.
 - **Redesign "Nitro" (11/09):** marca (ícone + wordmark) trocou "Secretária" pelo logo do Nitro,
   fundo de tela em pixel art (agora escolhível por usuário — ver "Aparência" acima), vidro fosco
   na barra/menus, glow no acento, SMTP/templates de e-mail já cobertos noutra seção.
@@ -397,11 +376,6 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
 
 ## Pendências
 
-- **Editor de Vídeos:** migration 0015 já aplicada; estilo de legenda ainda não implementado (só o botão reservado) — quando o agente validar
-  a legenda automática, decidir os modelos/estilos e aí sim adicionar a coluna/lógica; hoje
-  o fluxo é 100% manual (admin processa pelo Claude Code local, sem fila automática nem
-  notificação avisando o admin de pedido novo — dá pra reaproveitar `avisarDono()`/WhatsApp
-  se fizer sentido depois).
 - **WhatsApp:** instância `secretaria` conectada em 29/09 a um **número de TESTE** (+55 83 9960-8848,
   perfil "Ana - Suporte Gomapet" — número da GomaPet reaproveitado só pra montar/testar as mensagens).
   Pra trocar pelo definitivo: desconectar o aparelho no celular e escanear o QR de novo pelo link

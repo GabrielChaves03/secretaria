@@ -4,17 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Cliente com a service role key — ignora RLS por completo. Dois usos
  * legítimos:
- * 1. Motor do ManyChat (webhook/drenador/cron em `src/lib/manychat/`), que
- *    roda sem sessão de usuário nenhuma (é a Meta ou o pg_cron batendo no
- *    servidor).
- * 2. Fila global do Editor de Vídeos (`src/lib/video-pedidos-consultas.ts` e
- *    `src/app/editor-de-videos/actions.ts`) — aqui HÁ sessão de usuário, mas
- *    o admin precisa enxergar/editar pedidos de TODOS os escritórios de
- *    propósito, então a checagem de permissão é feita no código (`ehAdmin()`
- *    em `@/lib/admin`) antes de usar este cliente, não pela RLS.
- * Todo o resto do app (painel, OAuth) usa `criarClienteServidor()` — sessão
- * normal do usuário + RLS. Não importe este arquivo em outro lugar sem um
- * desses dois motivos.
+ * Único uso hoje: o cron de avisos agendados de WhatsApp
+ * (`src/lib/whatsapp-agendados.ts`), batido pelo pg_cron sem sessão de
+ * usuário, que precisa varrer demandas/compromissos de todos os escritórios.
+ * Todo o resto do app usa `criarClienteServidor()` — sessão normal + RLS.
  */
 function criarClienteAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,7 +15,7 @@ function criarClienteAdmin() {
 
   if (!url || !serviceRoleKey) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY não configurada — o motor do ManyChat (webhook/cron) não funciona sem ela.",
+      "SUPABASE_SERVICE_ROLE_KEY não configurada — o cron de avisos de WhatsApp não funciona sem ela.",
     );
   }
 

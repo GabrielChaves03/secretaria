@@ -46,8 +46,7 @@ export async function atualizarSessao(request: NextRequest) {
     caminho.startsWith("/calendario") ||
     caminho.startsWith("/onboarding") ||
     caminho.startsWith("/escritorio") ||
-    caminho.startsWith("/ajustes") ||
-    caminho.startsWith("/manychat");
+    caminho.startsWith("/ajustes");
   const rotaDeAuth = ROTAS_DE_AUTH.includes(caminho);
 
   if (!user && rotaProtegida) {
