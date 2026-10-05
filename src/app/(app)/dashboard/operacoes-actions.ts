@@ -75,7 +75,6 @@ export async function criarQuadro(formData: FormData) {
   const operacaoId = String(formData.get("operacao_id") ?? "");
   const nome = String(formData.get("nome") ?? "").trim();
   const cor = String(formData.get("cor") ?? "#579BFC").trim();
-  const tipo = String(formData.get("tipo") ?? "tarefas") === "anotacoes" ? "anotacoes" : "tarefas";
   if (!operacaoId || !nome) return;
 
   const supabase = await criarClienteServidor();
@@ -85,7 +84,7 @@ export async function criarQuadro(formData: FormData) {
       operacao_id: operacaoId,
       nome,
       cor,
-      tipo,
+      tipo: "tarefas",
       ordem: await proximaOrdem("quadros", { coluna: "operacao_id", valor: operacaoId }),
     })
     .select("id")

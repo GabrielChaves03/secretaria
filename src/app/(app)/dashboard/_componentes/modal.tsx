@@ -32,7 +32,7 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6"
-      style={{ background: "rgba(0,0,0,0.72)", animation: "overlay-in 0.12s ease" }}
+      style={{ background: "rgba(0,0,0,0.9)", animation: "overlay-in 0.12s ease" }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) aoFechar();
       }}

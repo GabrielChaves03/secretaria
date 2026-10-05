@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { VisaoQuadro } from "@/app/(app)/dashboard/_componentes/visao-quadro";
 import { requererEscritorio } from "@/lib/perfil-consultas";
@@ -25,6 +25,7 @@ export default async function PaginaQuadro({
 
   const quadro = await obterQuadro(id);
   if (!quadro) notFound();
+  if (quadro.tipo === "planilha") redirect(`/dashboard/planilha/${quadro.id}`);
   const operacao = await obterOperacao(quadro.operacao_id);
 
   const [demandas, membros, config] = await Promise.all([

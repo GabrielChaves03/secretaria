@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requererUsuario } from "@/lib/auth";
 import { obterPerfil } from "@/lib/perfil-consultas";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -118,4 +119,72 @@ export async function apagarColuna(quadroId: string, colunaId: string) {
     .eq("id", quadroId);
 
   revalidatePath(`/dashboard/planilha/${quadroId}`);
+}
+
+/**
+ * Cria um quadro do tipo Tabela (planilha) numa operação, já com as colunas
+ * definidas e N linhas em branco. Só o chefe (a RLS também barra).
+ */
+export async function criarTabela(formData: FormData) {
+  await requererUsuario();
+  const perfil = await obterPerfil();
+  if (perfil.papel !== "chefe") return;
+
+  const operacaoId = String(formData.get("operacao_id") ?? "");
+  const nome = String(formData.get("nome") ?? "").trim();
+  const cor = String(formData.get("cor") ?? "#579BFC").trim();
+  const linhas = Math.min(500, Math.max(0, Number(formData.get("linhas") ?? 0) || 0));
+  let defs: { nome: string; tipo: string }[] = [];
+  try {
+    defs = JSON.parse(String(formData.get("colunas") ?? "[]"));
+  } catch {
+    defs = [];
+  }
+  if (!operacaoId || !nome) return;
+
+  const tiposOk = new Set(["texto", "numero", "link", "select"]);
+  const colunas: ColunaPlanilha[] = defs
+    .filter((c) => c && c.nome && c.nome.trim())
+    .map((c) => ({
+      id: novoIdPlanilha("c"),
+      nome: c.nome.trim().slice(0, 40),
+      tipo: (tiposOk.has(c.tipo) ? c.tipo : "texto") as ColunaPlanilha["tipo"],
+    }));
+
+  const supabase = await criarClienteServidor();
+
+  const { data: ult } = await supabase
+    .from("quadros")
+    .select("ordem")
+    .eq("operacao_id", operacaoId)
+    .order("ordem", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ordem = ((ult?.ordem as number | undefined) ?? -1) + 1;
+
+  const { data: novo, error } = await supabase
+    .from("quadros")
+    .insert({
+      operacao_id: operacaoId,
+      nome,
+      cor,
+      tipo: "planilha",
+      ordem,
+      planilha_colunas: colunas,
+    })
+    .select("id")
+    .single();
+  if (error || !novo) return;
+
+  if (linhas > 0) {
+    const rows = Array.from({ length: linhas }, (_, i) => ({
+      quadro_id: novo.id as string,
+      valores: {},
+      ordem: i,
+    }));
+    await supabase.from("planilha_linhas").insert(rows);
+  }
+
+  revalidatePath("/dashboard", "layout");
+  redirect(`/dashboard/planilha/${novo.id}`);
 }
