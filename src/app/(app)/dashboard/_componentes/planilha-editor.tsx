@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Plus, Trash2, X } from "lucide-react";
 import {
@@ -11,7 +11,21 @@ import {
   renomearColuna,
   salvarLinha,
 } from "@/app/(app)/dashboard/planilha-actions";
+import { corTextoSobre } from "@/lib/demandas";
 import type { ColunaPlanilha, LinhaPlanilha, TipoColunaPlanilha } from "@/lib/planilha";
+
+/** Paleta estilo Monday para as células de seleção. */
+const PALETA = [
+  "#00C875", "#579BFC", "#FDAB3D", "#E2445C", "#A25DDC", "#00D2D2",
+  "#FF5AC4", "#FF642E", "#037F4C", "#0073EA", "#CAB641", "#7E5EF2",
+];
+
+/** Cor estável para um valor de seleção (mesma cor sempre que o valor repete). */
+function corDeValor(valor: string): string {
+  let h = 0;
+  for (let i = 0; i < valor.length; i++) h = (h * 31 + valor.charCodeAt(i)) >>> 0;
+  return PALETA[h % PALETA.length];
+}
 
 export function PlanilhaEditor({
   quadroId,
@@ -29,7 +43,6 @@ export function PlanilhaEditor({
   const [cols, setCols] = useState(colunas);
   const [novaColuna, setNovaColuna] = useState(false);
 
-  // Re-sincroniza quando o servidor manda dados novos (add linha/coluna).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLinhas(linhasIniciais);
@@ -39,6 +52,21 @@ export function PlanilhaEditor({
     setCols(colunas);
   }, [colunas]);
 
+  // Valores distintos por coluna de seleção — para o dropdown.
+  const opcoesPorColuna = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const c of cols) {
+      if (c.tipo !== "select") continue;
+      const set = new Set<string>();
+      for (const l of linhas) {
+        const v = (l.valores?.[c.id] ?? "").trim();
+        if (v) set.add(v);
+      }
+      m[c.id] = [...set].sort();
+    }
+    return m;
+  }, [cols, linhas]);
+
   function editarCelula(linhaId: string, colId: string, valor: string) {
     setLinhas((ls) =>
       ls.map((l) =>
@@ -47,9 +75,9 @@ export function PlanilhaEditor({
     );
   }
 
-  async function persistir(linhaId: string) {
+  async function persistir(linhaId: string, valores?: Record<string, string>) {
     const l = linhas.find((x) => x.id === linhaId);
-    if (l) await salvarLinha(linhaId, l.valores);
+    await salvarLinha(linhaId, valores ?? l?.valores ?? {});
   }
 
   if (cols.length === 0) {
@@ -57,11 +85,7 @@ export function PlanilhaEditor({
       <div className="mt-6 flex flex-col items-start gap-3 text-sm text-fg-tertiary">
         <p>Esta planilha ainda não tem colunas.</p>
         {ehChefe && (
-          <button
-            type="button"
-            onClick={() => setNovaColuna(true)}
-            className="btn btn-primary btn-sm"
-          >
+          <button type="button" onClick={() => setNovaColuna(true)} className="btn btn-primary btn-sm">
             <Plus className="h-4 w-4" /> Adicionar coluna
           </button>
         )}
@@ -87,10 +111,7 @@ export function PlanilhaEditor({
             <tr className="border-b-2 border-border bg-raised text-left">
               <th className="w-12 px-3 py-3 text-xs font-medium text-fg-tertiary">#</th>
               {cols.map((c) => (
-                <th
-                  key={c.id}
-                  className="min-w-[180px] border-l border-border/60 px-3 py-2.5"
-                >
+                <th key={c.id} className="min-w-[180px] border-l border-border/60 px-3 py-2.5">
                   <CabecalhoColuna
                     quadroId={quadroId}
                     coluna={c}
@@ -121,19 +142,35 @@ export function PlanilhaEditor({
             {linhas.map((l, i) => (
               <tr
                 key={l.id}
-                className="group border-b border-border/50 transition-colors hover:bg-surface-hover/40"
+                className={`group border-b border-border/50 transition-colors hover:bg-surface-hover/50 ${
+                  i % 2 ? "bg-surface-hover/15" : ""
+                }`}
               >
                 <td className="px-3 py-1.5 text-center text-xs text-fg-tertiary">{i + 1}</td>
-                {cols.map((c) => (
-                  <td key={c.id} className="border-l border-border/40 px-1.5 py-1 align-top">
-                    <Celula
-                      tipo={c.tipo}
-                      valor={l.valores?.[c.id] ?? ""}
-                      aoMudar={(v) => editarCelula(l.id, c.id, v)}
-                      aoSair={() => persistir(l.id)}
-                    />
-                  </td>
-                ))}
+                {cols.map((c) =>
+                  c.tipo === "select" ? (
+                    <td key={c.id} className="border-l border-border/40 p-0 align-middle">
+                      <CelulaSelect
+                        valor={l.valores?.[c.id] ?? ""}
+                        opcoes={opcoesPorColuna[c.id] ?? []}
+                        aoEscolher={(v) => {
+                          editarCelula(l.id, c.id, v);
+                          const novos = { ...l.valores, [c.id]: v };
+                          persistir(l.id, novos);
+                        }}
+                      />
+                    </td>
+                  ) : (
+                    <td key={c.id} className="border-l border-border/40 px-1.5 py-1 align-top">
+                      <Celula
+                        tipo={c.tipo}
+                        valor={l.valores?.[c.id] ?? ""}
+                        aoMudar={(v) => editarCelula(l.id, c.id, v)}
+                        aoSair={() => persistir(l.id)}
+                      />
+                    </td>
+                  ),
+                )}
                 {ehChefe && <td className="border-l border-border/40" />}
                 <td className="px-1 py-1 text-center">
                   <button
@@ -204,9 +241,7 @@ function CabecalhoColuna({
   const [nome, setNome] = useState(coluna.nome);
 
   if (!ehChefe) {
-    return (
-      <span className="text-sm font-semibold text-foreground">{coluna.nome}</span>
-    );
+    return <span className="text-sm font-semibold text-foreground">{coluna.nome}</span>;
   }
 
   return (
@@ -231,6 +266,103 @@ function CabecalhoColuna({
       >
         <X className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+/** Célula de seleção colorida (estilo Monday): a cor segue o valor. */
+function CelulaSelect({
+  valor,
+  opcoes,
+  aoEscolher,
+}: {
+  valor: string;
+  opcoes: string[];
+  aoEscolher: (v: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [novo, setNovo] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [aberto]);
+
+  const cor = valor ? corDeValor(valor) : null;
+
+  return (
+    <div ref={ref} className="relative h-full">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex h-full min-h-[34px] w-full items-center justify-center px-2 py-1.5 text-center text-sm font-medium transition-opacity hover:opacity-90"
+        style={
+          cor
+            ? { background: cor, color: corTextoSobre(cor) }
+            : { color: "var(--foreground-tertiary)" }
+        }
+      >
+        {valor || "—"}
+      </button>
+
+      {aberto && (
+        <div
+          className="absolute left-0 top-full z-50 mt-1 w-48 rounded-[var(--radius)] bg-overlay p-1.5"
+          style={{ boxShadow: "var(--shadow-pop)" }}
+        >
+          <div className="flex flex-col gap-0.5">
+            {opcoes.map((o) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => {
+                  aoEscolher(o);
+                  setAberto(false);
+                }}
+                className="rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs font-medium"
+                style={{ background: corDeValor(o), color: corTextoSobre(corDeValor(o)) }}
+              >
+                {o}
+              </button>
+            ))}
+            {valor && (
+              <button
+                type="button"
+                onClick={() => {
+                  aoEscolher("");
+                  setAberto(false);
+                }}
+                className="rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs text-fg-tertiary hover:bg-surface-hover"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const v = novo.trim();
+              if (!v) return;
+              aoEscolher(v);
+              setNovo("");
+              setAberto(false);
+            }}
+            className="mt-1.5 border-t border-border pt-1.5"
+          >
+            <input
+              value={novo}
+              onChange={(e) => setNovo(e.target.value)}
+              placeholder="Novo valor…"
+              className="w-full rounded-[var(--radius-sm)] bg-surface-hover px-2 py-1 text-xs outline-none"
+            />
+          </form>
+        </div>
+      )}
     </div>
   );
 }
