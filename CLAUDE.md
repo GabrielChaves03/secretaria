@@ -220,6 +220,14 @@ src/
     instagram/media/route.ts     # seletor de posts do formulário de automação
   api/whatsapp/cron/route.ts   # batido pelo pg_cron a cada 5 min (migration 0016/0017) → avisos agendados
 supabase/
+> **Planilhas + aninhamento (migration 0021):** um quadro pode ser `tipo='planilha'` (tabela livre:
+> colunas em `quadros.planilha_colunas` jsonb, linhas em `planilha_linhas`) e pode ter `quadro_pai_id`
+> (aparece aninhado sob outro quadro no menu). Ex.: a planilha "Referências Criativos" é filha do
+> quadro "Gomapet". Páginas: `/dashboard/planilha/[id]` (editor); libs `planilha.ts`/`planilha-consultas.ts`;
+> actions `planilha-actions.ts`. RLS de `planilha_linhas`: qualquer membro do escritório lê e edita.
+> **Importada do Avant em 05/10** (133 linhas) lendo o Firestore `gestao-avant` só dessa planilha; o dump
+> completo da base foi descartado logo após (tinha dados sensíveis).
+
   migrations/                  # SQL versionado, prefixo numérico (0001_ … 0018_). Aplicar: supabase-aplicar.bat
                                #   0009 = MULTI-TENANT: tabela `escritorios`, `escritorio_id` em usuarios/demandas/listas/comentarios/notificacoes,
                                #          helper meu_escritorio(), RPCs (criar/entrar/sair/definir_papel/remover/regenerar), RLS reescrita

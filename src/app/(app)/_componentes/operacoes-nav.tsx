@@ -8,10 +8,16 @@ import {
   Pencil,
   Plus,
   StickyNote,
+  Table2,
   Trash2,
 } from "lucide-react";
 import { Modal } from "@/app/(app)/dashboard/_componentes/modal";
-import { CORES_OPERACAO, type OperacaoComQuadros } from "@/lib/operacoes";
+import {
+  CORES_OPERACAO,
+  type OperacaoComQuadros,
+  type QuadroComTotal,
+  type QuadroNode,
+} from "@/lib/operacoes";
 import {
   apagarOperacao,
   apagarQuadro,
@@ -29,6 +35,13 @@ type FormaModal =
   | { tipo: "novo-quadro"; operacaoId: string }
   | { tipo: "editar-quadro"; id: string; nome: string; cor: string };
 
+/** Rota de um quadro conforme o tipo. */
+function linkDe(q: { id: string; tipo: string }) {
+  return q.tipo === "planilha"
+    ? `/dashboard/planilha/${q.id}`
+    : `/dashboard/quadro/${q.id}`;
+}
+
 export function OperacoesNav({
   operacoes,
   ehChefe,
@@ -39,9 +52,9 @@ export function OperacoesNav({
   const caminho = usePathname();
   const router = useRouter();
   const [abertas, setAbertas] = useState<Record<string, boolean>>({});
+  const [quadrosAbertos, setQuadrosAbertos] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<FormaModal | null>(null);
 
-  // Estado de expandido/recolhido por operação (lembrado no navegador).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_ABERTAS);
@@ -54,7 +67,7 @@ export function OperacoesNav({
 
   function alternar(id: string) {
     setAbertas((a) => {
-      const prox = { ...a, [id]: !a[id] };
+      const prox = { ...a, [id]: !(a[id] ?? true) };
       try {
         localStorage.setItem(LS_ABERTAS, JSON.stringify(prox));
       } catch {
@@ -64,9 +77,11 @@ export function OperacoesNav({
     });
   }
 
-  const quadroAtivo = caminho.startsWith("/dashboard/quadro/")
-    ? caminho.split("/")[3]
-    : null;
+  const ativo =
+    caminho.startsWith("/dashboard/quadro/") ||
+    caminho.startsWith("/dashboard/planilha/")
+      ? caminho.split("/")[3]
+      : null;
 
   return (
     <div className="mt-1">
@@ -146,71 +161,20 @@ export function OperacoesNav({
 
               {aberta && (
                 <div className="ml-3 flex flex-col gap-0.5 border-l border-border pl-2">
-                  {op.quadros.map((q) => {
-                    const ativo = q.id === quadroAtivo;
-                    return (
-                      <div
-                        key={q.id}
-                        className={`group/q flex items-center gap-1.5 rounded-[var(--radius)] px-2 py-1.5 ${
-                          ativo
-                            ? "bg-surface-active"
-                            : "hover:bg-surface-hover"
-                        }`}
-                      >
-                        <Link
-                          href={`/dashboard/quadro/${q.id}`}
-                          className="flex min-w-0 flex-1 items-center gap-1.5"
-                        >
-                          <span
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ background: q.cor }}
-                          />
-                          <span
-                            className={`flex min-w-0 items-center gap-1 truncate text-sm ${
-                              ativo ? "font-medium text-foreground" : "text-fg-secondary"
-                            }`}
-                          >
-                            {q.tipo === "anotacoes" && (
-                              <StickyNote className="h-3 w-3 shrink-0 opacity-60" />
-                            )}
-                            {q.nome}
-                          </span>
-                          <span className="ml-auto shrink-0 rounded-full bg-surface-hover px-1.5 text-[0.65rem] font-medium text-fg-tertiary">
-                            {q.total}
-                          </span>
-                        </Link>
-                        {ehChefe && (
-                          <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/q:opacity-100">
-                            <BotaoIcone
-                              title="Editar quadro"
-                              onClick={() =>
-                                setModal({
-                                  tipo: "editar-quadro",
-                                  id: q.id,
-                                  nome: q.nome,
-                                  cor: q.cor,
-                                })
-                              }
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </BotaoIcone>
-                            <FormBotao
-                              action={apagarQuadro}
-                              id={q.id}
-                              confirmar={`Excluir o quadro "${q.nome}" e todas as demandas dentro dele?`}
-                              title="Excluir quadro"
-                              onDone={() => {
-                                if (ativo) router.push("/dashboard");
-                                else router.refresh();
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </FormBotao>
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {op.quadros.map((q) => (
+                    <QuadroItem
+                      key={q.id}
+                      quadro={q}
+                      ativo={ativo}
+                      ehChefe={ehChefe}
+                      aberto={quadrosAbertos[q.id] ?? true}
+                      onToggle={() =>
+                        setQuadrosAbertos((s) => ({ ...s, [q.id]: !(s[q.id] ?? true) }))
+                      }
+                      onEditar={(x) => setModal({ tipo: "editar-quadro", ...x })}
+                      router={router}
+                    />
+                  ))}
                   {ehChefe && (
                     <button
                       type="button"
@@ -241,6 +205,137 @@ export function OperacoesNav({
   );
 }
 
+function QuadroItem({
+  quadro: q,
+  ativo,
+  ehChefe,
+  aberto,
+  onToggle,
+  onEditar,
+  router,
+}: {
+  quadro: QuadroNode;
+  ativo: string | null;
+  ehChefe: boolean;
+  aberto: boolean;
+  onToggle: () => void;
+  onEditar: (x: { id: string; nome: string; cor: string }) => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const temFilhos = q.filhos.length > 0;
+  return (
+    <div>
+      <LinhaQuadro
+        quadro={q}
+        ativo={ativo}
+        ehChefe={ehChefe}
+        temFilhos={temFilhos}
+        aberto={aberto}
+        onToggle={onToggle}
+        onEditar={onEditar}
+        router={router}
+      />
+      {temFilhos && aberto && (
+        <div className="ml-3 flex flex-col gap-0.5 border-l border-border pl-2">
+          {q.filhos.map((f) => (
+            <LinhaQuadro
+              key={f.id}
+              quadro={f}
+              ativo={ativo}
+              ehChefe={ehChefe}
+              temFilhos={false}
+              aberto={false}
+              onToggle={() => {}}
+              onEditar={onEditar}
+              router={router}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinhaQuadro({
+  quadro: q,
+  ativo,
+  ehChefe,
+  temFilhos,
+  aberto,
+  onToggle,
+  onEditar,
+  router,
+}: {
+  quadro: QuadroComTotal;
+  ativo: string | null;
+  ehChefe: boolean;
+  temFilhos: boolean;
+  aberto: boolean;
+  onToggle: () => void;
+  onEditar: (x: { id: string; nome: string; cor: string }) => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const estaAtivo = q.id === ativo;
+  return (
+    <div
+      className={`group/q flex items-center gap-1.5 rounded-[var(--radius)] px-2 py-1.5 ${
+        estaAtivo ? "bg-surface-active" : "hover:bg-surface-hover"
+      }`}
+    >
+      {temFilhos ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="grid h-4 w-4 shrink-0 place-items-center text-fg-tertiary"
+        >
+          <ChevronRight
+            className={`h-3 w-3 transition-transform ${aberto ? "rotate-90" : ""}`}
+          />
+        </button>
+      ) : (
+        <span className="w-4 shrink-0" />
+      )}
+      <Link href={linkDe(q)} className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: q.cor }} />
+        <span
+          className={`flex min-w-0 items-center gap-1 truncate text-sm ${
+            estaAtivo ? "font-medium text-foreground" : "text-fg-secondary"
+          }`}
+        >
+          {q.tipo === "planilha" && <Table2 className="h-3 w-3 shrink-0 opacity-60" />}
+          {q.tipo === "anotacoes" && <StickyNote className="h-3 w-3 shrink-0 opacity-60" />}
+          {q.nome}
+        </span>
+        <span className="ml-auto shrink-0 rounded-full bg-surface-hover px-1.5 text-[0.65rem] font-medium text-fg-tertiary">
+          {q.total}
+        </span>
+      </Link>
+      {ehChefe && (
+        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/q:opacity-100">
+          <BotaoIcone
+            title="Editar"
+            onClick={() => onEditar({ id: q.id, nome: q.nome, cor: q.cor })}
+          >
+            <Pencil className="h-3 w-3" />
+          </BotaoIcone>
+          <FormBotao
+            action={apagarQuadro}
+            id={q.id}
+            confirmar={`Excluir "${q.nome}" e tudo dentro dele?`}
+            title="Excluir"
+            onDone={() => {
+              if (estaAtivo) router.push("/dashboard");
+              else router.refresh();
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </FormBotao>
+        </span>
+      )}
+    </div>
+  );
+}
+
 function BotaoIcone({
   title,
   onClick,
@@ -262,7 +357,6 @@ function BotaoIcone({
   );
 }
 
-/** Botão que dispara uma server action (apagar) com confirmação. */
 function FormBotao({
   action,
   id,
@@ -387,7 +481,7 @@ function ModalForma({
                 onClick={() => setCor(c)}
                 aria-label={`Cor ${c}`}
                 className={`h-7 w-7 rounded-full transition-transform ${
-                  cor === c ? "scale-110 ring-2 ring-offset-2 ring-offset-surface" : ""
+                  cor === c ? "scale-110" : ""
                 }`}
                 style={{ background: c, boxShadow: cor === c ? `0 0 0 2px ${c}` : "none" }}
               />

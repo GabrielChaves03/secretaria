@@ -1,7 +1,6 @@
 /**
  * Tipos de Operações e Quadros — client-safe (sem import de servidor).
- * Trazido da fusão com o AvantPro: Operação (pasta) → Quadro (board).
- * Consultas em `operacoes-consultas.ts` (server-only).
+ * Operação (pasta) → Quadro (board/planilha) → [quadros-filhos aninhados].
  */
 
 export type Operacao = {
@@ -11,11 +10,12 @@ export type Operacao = {
   ordem: number;
 };
 
-export type TipoQuadro = "tarefas" | "anotacoes";
+export type TipoQuadro = "tarefas" | "anotacoes" | "planilha";
 
 export type Quadro = {
   id: string;
   operacao_id: string;
+  quadro_pai_id: string | null;
   nome: string;
   cor: string;
   tipo: TipoQuadro;
@@ -23,14 +23,19 @@ export type Quadro = {
   primeiro_grupo: string;
   grupos_ordem: string[];
   grupos_cores: Record<string, string>;
+  planilha_colunas: unknown[];
 };
 
-/** Uma operação com os seus quadros e a contagem de itens de cada um. */
+/** Quadro com a contagem de itens (tarefas ou linhas). */
+export type QuadroComTotal = Quadro & { total: number };
+
+/** Quadro de topo com os quadros-filhos aninhados (ex.: planilhas). */
+export type QuadroNode = QuadroComTotal & { filhos: QuadroComTotal[] };
+
 export type OperacaoComQuadros = Operacao & {
-  quadros: (Quadro & { total: number })[];
+  quadros: QuadroNode[];
 };
 
-/** Paleta das operações/quadros (mesma do Avant). */
 export const CORES_OPERACAO = [
   "#00CA72",
   "#579BFC",
