@@ -76,3 +76,46 @@ export async function adicionarColuna(
   await supabase.from("quadros").update({ planilha_colunas: colunas }).eq("id", quadroId);
   revalidatePath(`/dashboard/planilha/${quadroId}`);
 }
+
+/** Renomeia uma coluna da planilha (só o chefe). */
+export async function renomearColuna(quadroId: string, colunaId: string, nome: string) {
+  await requererUsuario();
+  const perfil = await obterPerfil();
+  if (perfil.papel !== "chefe") return;
+  const n = nome.trim();
+  if (!quadroId || !colunaId || !n) return;
+
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("quadros")
+    .select("planilha_colunas")
+    .eq("id", quadroId)
+    .maybeSingle();
+  const colunas = ((data?.planilha_colunas as ColunaPlanilha[] | null) ?? []).filter(Boolean);
+  const prox = colunas.map((c) => (c.id === colunaId ? { ...c, nome: n } : c));
+
+  await supabase.from("quadros").update({ planilha_colunas: prox }).eq("id", quadroId);
+  revalidatePath(`/dashboard/planilha/${quadroId}`);
+}
+
+/** Apaga uma coluna da planilha e remove o valor dela das linhas (só o chefe). */
+export async function apagarColuna(quadroId: string, colunaId: string) {
+  await requererUsuario();
+  const perfil = await obterPerfil();
+  if (perfil.papel !== "chefe") return;
+  if (!quadroId || !colunaId) return;
+
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("quadros")
+    .select("planilha_colunas")
+    .eq("id", quadroId)
+    .maybeSingle();
+  const colunas = ((data?.planilha_colunas as ColunaPlanilha[] | null) ?? []).filter(Boolean);
+  await supabase
+    .from("quadros")
+    .update({ planilha_colunas: colunas.filter((c) => c.id !== colunaId) })
+    .eq("id", quadroId);
+
+  revalidatePath(`/dashboard/planilha/${quadroId}`);
+}
