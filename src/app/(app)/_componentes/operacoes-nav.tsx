@@ -78,7 +78,7 @@ export function OperacoesNav({
           <button
             type="button"
             onClick={() => setModal({ tipo: "nova-operacao" })}
-            title="Nova operação"
+            title="Nova pasta"
             className="grid h-5 w-5 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary transition-colors hover:bg-surface-hover hover:text-foreground"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -89,7 +89,7 @@ export function OperacoesNav({
       <div className="flex flex-col gap-0.5">
         {operacoes.length === 0 && (
           <p className="px-2 py-1 text-xs text-fg-tertiary">
-            {ehChefe ? "Crie a primeira operação." : "Nenhuma operação."}
+            {ehChefe ? "Crie a primeira pasta." : "Nenhuma pasta."}
           </p>
         )}
 
@@ -119,7 +119,7 @@ export function OperacoesNav({
                 {ehChefe && (
                   <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/op:opacity-100">
                     <BotaoIcone
-                      title="Editar operação"
+                      title="Editar pasta"
                       onClick={() =>
                         setModal({
                           tipo: "editar-operacao",
@@ -134,8 +134,8 @@ export function OperacoesNav({
                     <FormBotao
                       action={apagarOperacao}
                       id={op.id}
-                      confirmar={`Excluir a operação "${op.nome}" e todos os quadros e demandas dentro dela?`}
-                      title="Excluir operação"
+                      confirmar={`Excluir a pasta "${op.nome}" e todos os quadros e demandas dentro dela?`}
+                      title="Excluir pasta"
                       onDone={() => router.refresh()}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -317,8 +317,8 @@ function ModalForma({
   const [cor, setCor] = useState(corInicial);
 
   const titulo = {
-    "nova-operacao": "Nova operação",
-    "editar-operacao": "Editar operação",
+    "nova-operacao": "Nova pasta",
+    "editar-operacao": "Editar pasta",
     "novo-quadro": "Novo quadro",
     "editar-quadro": "Editar quadro",
   }[forma.tipo];
@@ -350,7 +350,7 @@ function ModalForma({
 
         <div className="space-y-1.5">
           <label htmlFor="nome" className="rotulo block">
-            Nome {ehOperacao ? "da operação" : "do quadro"}
+            Nome {ehOperacao ? "da pasta" : "do quadro"}
           </label>
           <input
             id="nome"
