@@ -6,6 +6,7 @@ import { ExternalLink, Plus, Trash2, X } from "lucide-react";
 import {
   adicionarColuna,
   adicionarLinha,
+  alterarTipoColuna,
   apagarColuna,
   apagarLinha,
   renomearColuna,
@@ -80,6 +81,11 @@ export function PlanilhaEditor({
     await salvarLinha(linhaId, valores ?? l?.valores ?? {});
   }
 
+  function mudarTipo(colId: string, tipo: ColunaPlanilha["tipo"]) {
+    setCols((cs) => cs.map((c) => (c.id === colId ? { ...c, tipo } : c)));
+    alterarTipoColuna(quadroId, colId, tipo);
+  }
+
   if (cols.length === 0) {
     return (
       <div className="mt-6 flex flex-col items-start gap-3 text-sm text-fg-tertiary">
@@ -116,6 +122,7 @@ export function PlanilhaEditor({
                     quadroId={quadroId}
                     coluna={c}
                     ehChefe={ehChefe}
+                    aoMudarTipo={(t) => mudarTipo(c.id, t)}
                     aoRemover={() => {
                       setCols((cs) => cs.filter((x) => x.id !== c.id));
                       apagarColuna(quadroId, c.id);
@@ -231,11 +238,13 @@ function CabecalhoColuna({
   quadroId,
   coluna,
   ehChefe,
+  aoMudarTipo,
   aoRemover,
 }: {
   quadroId: string;
   coluna: ColunaPlanilha;
   ehChefe: boolean;
+  aoMudarTipo: (tipo: ColunaPlanilha["tipo"]) => void;
   aoRemover: () => void;
 }) {
   const [nome, setNome] = useState(coluna.nome);
@@ -254,8 +263,19 @@ function CabecalhoColuna({
           if (n && n !== coluna.nome) renomearColuna(quadroId, coluna.id, n);
           else setNome(coluna.nome);
         }}
-        className="w-full rounded-[var(--radius-sm)] bg-transparent text-sm font-semibold text-foreground outline-none focus:bg-surface-hover focus:px-1.5 focus:py-0.5"
+        className="min-w-0 flex-1 rounded-[var(--radius-sm)] bg-transparent text-sm font-semibold text-foreground outline-none focus:bg-surface-hover focus:px-1.5 focus:py-0.5"
       />
+      <select
+        value={coluna.tipo}
+        onChange={(e) => aoMudarTipo(e.target.value as ColunaPlanilha["tipo"])}
+        title="Tipo da coluna"
+        className="shrink-0 cursor-pointer rounded-[var(--radius-sm)] bg-surface-hover px-1 py-0.5 text-[10px] font-medium text-fg-tertiary outline-none"
+      >
+        <option value="texto">Texto</option>
+        <option value="numero">Número</option>
+        <option value="link">Link</option>
+        <option value="select">Seleção</option>
+      </select>
       <button
         type="button"
         aria-label="Excluir coluna"

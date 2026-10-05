@@ -133,23 +133,16 @@ export async function criarTabela(formData: FormData) {
   const operacaoId = String(formData.get("operacao_id") ?? "");
   const nome = String(formData.get("nome") ?? "").trim();
   const cor = String(formData.get("cor") ?? "#579BFC").trim();
-  const linhas = Math.min(500, Math.max(0, Number(formData.get("linhas") ?? 0) || 0));
-  let defs: { nome: string; tipo: string }[] = [];
-  try {
-    defs = JSON.parse(String(formData.get("colunas") ?? "[]"));
-  } catch {
-    defs = [];
-  }
+  const linhas = Math.min(100, Math.max(0, Number(formData.get("linhas") ?? 0) || 0));
+  const numCols = Math.min(30, Math.max(1, Number(formData.get("num_colunas") ?? 0) || 1));
   if (!operacaoId || !nome) return;
 
-  const tiposOk = new Set(["texto", "numero", "link", "select"]);
-  const colunas: ColunaPlanilha[] = defs
-    .filter((c) => c && c.nome && c.nome.trim())
-    .map((c) => ({
-      id: novoIdPlanilha("c"),
-      nome: c.nome.trim().slice(0, 40),
-      tipo: (tiposOk.has(c.tipo) ? c.tipo : "texto") as ColunaPlanilha["tipo"],
-    }));
+  // Tabela "crua": N colunas de texto (a pessoa renomeia e define o tipo depois).
+  const colunas: ColunaPlanilha[] = Array.from({ length: numCols }, (_, i) => ({
+    id: novoIdPlanilha("c"),
+    nome: `Coluna ${i + 1}`,
+    tipo: "texto",
+  }));
 
   const supabase = await criarClienteServidor();
 
@@ -187,4 +180,29 @@ export async function criarTabela(formData: FormData) {
 
   revalidatePath("/dashboard", "layout");
   redirect(`/dashboard/planilha/${novo.id}`);
+}
+
+/** Muda o tipo de dado de uma coluna da planilha (só o chefe). */
+export async function alterarTipoColuna(
+  quadroId: string,
+  colunaId: string,
+  tipo: ColunaPlanilha["tipo"],
+) {
+  await requererUsuario();
+  const perfil = await obterPerfil();
+  if (perfil.papel !== "chefe") return;
+  const tiposOk = new Set(["texto", "numero", "link", "select"]);
+  if (!quadroId || !colunaId || !tiposOk.has(tipo)) return;
+
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("quadros")
+    .select("planilha_colunas")
+    .eq("id", quadroId)
+    .maybeSingle();
+  const colunas = ((data?.planilha_colunas as ColunaPlanilha[] | null) ?? []).filter(Boolean);
+  const prox = colunas.map((c) => (c.id === colunaId ? { ...c, tipo } : c));
+
+  await supabase.from("quadros").update({ planilha_colunas: prox }).eq("id", quadroId);
+  revalidatePath(`/dashboard/planilha/${quadroId}`);
 }

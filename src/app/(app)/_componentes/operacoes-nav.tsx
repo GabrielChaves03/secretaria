@@ -10,7 +10,6 @@ import {
   StickyNote,
   Table2,
   Trash2,
-  X,
 } from "lucide-react";
 import { Modal } from "@/app/(app)/dashboard/_componentes/modal";
 import {
@@ -396,8 +395,6 @@ function FormBotao({
   );
 }
 
-type DefColuna = { nome: string; tipo: string };
-
 function ModalForma({
   forma,
   aoFechar,
@@ -414,8 +411,8 @@ function ModalForma({
   const corInicial = edicao ? forma.cor : CORES_OPERACAO[0];
   const [cor, setCor] = useState(corInicial);
   const [tipoQuadro, setTipoQuadro] = useState<"tarefas" | "tabela">("tarefas");
-  const [colunas, setColunas] = useState<DefColuna[]>([{ nome: "", tipo: "texto" }]);
-  const [linhas, setLinhas] = useState(3);
+  const [numColunas, setNumColunas] = useState(3);
+  const [linhas, setLinhas] = useState(5);
 
   const ehTabelaNova = forma.tipo === "novo-quadro" && tipoQuadro === "tabela";
 
@@ -454,11 +451,7 @@ function ModalForma({
         )}
         {ehTabelaNova && (
           <>
-            <input
-              type="hidden"
-              name="colunas"
-              value={JSON.stringify(colunas.filter((c) => c.nome.trim()))}
-            />
+            <input type="hidden" name="num_colunas" value={numColunas} />
             <input type="hidden" name="linhas" value={linhas} />
           </>
         )}
@@ -521,69 +514,43 @@ function ModalForma({
         </div>
 
         {ehTabelaNova && (
-          <div className="space-y-2 rounded-[var(--radius)] bg-surface-hover/40 p-3">
-            <span className="rotulo block">Colunas</span>
-            {colunas.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  value={c.nome}
-                  onChange={(e) =>
-                    setColunas((cs) =>
-                      cs.map((x, j) => (j === i ? { ...x, nome: e.target.value } : x)),
-                    )
-                  }
-                  placeholder={`Coluna ${i + 1}`}
-                  maxLength={40}
-                  className="campo !py-1 flex-1 text-sm"
-                />
-                <select
-                  value={c.tipo}
-                  onChange={(e) =>
-                    setColunas((cs) =>
-                      cs.map((x, j) => (j === i ? { ...x, tipo: e.target.value } : x)),
-                    )
-                  }
-                  className="campo !py-1 w-28 text-sm"
-                >
-                  <option value="texto">Texto</option>
-                  <option value="numero">Número</option>
-                  <option value="link">Link</option>
-                  <option value="select">Seleção</option>
-                </select>
-                {colunas.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setColunas((cs) => cs.filter((_, j) => j !== i))}
-                    aria-label="Remover coluna"
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-danger"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setColunas((cs) => [...cs, { nome: "", tipo: "texto" }])}
-              className="flex items-center gap-1.5 text-xs text-fg-secondary hover:text-foreground"
-            >
-              <Plus className="h-3.5 w-3.5" /> Adicionar coluna
-            </button>
-
-            <div className="flex items-center gap-2 pt-1">
-              <label htmlFor="linhas" className="text-sm text-fg-secondary">
-                Linhas iniciais
+          <div className="grid grid-cols-2 gap-3 rounded-[var(--radius)] bg-surface-hover/40 p-3">
+            <div className="space-y-1.5">
+              <label htmlFor="num_colunas_ui" className="rotulo block">
+                Nº de colunas
               </label>
               <input
-                id="linhas"
+                id="num_colunas_ui"
+                type="number"
+                min={1}
+                max={30}
+                value={numColunas}
+                onChange={(e) =>
+                  setNumColunas(Math.max(1, Math.min(30, Number(e.target.value) || 1)))
+                }
+                className="campo !py-1.5"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="linhas_ui" className="rotulo block">
+                Nº de linhas
+              </label>
+              <input
+                id="linhas_ui"
                 type="number"
                 min={0}
                 max={100}
                 value={linhas}
-                onChange={(e) => setLinhas(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                className="campo !py-1 w-20 text-sm"
+                onChange={(e) =>
+                  setLinhas(Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                }
+                className="campo !py-1.5"
               />
             </div>
+            <p className="col-span-2 text-xs text-fg-tertiary">
+              Cria uma tabela em branco. Você renomeia as colunas, define o tipo
+              de cada uma e adiciona linhas/colunas depois, no editor.
+            </p>
           </div>
         )}
 
