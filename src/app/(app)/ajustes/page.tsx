@@ -6,6 +6,8 @@ import { ehAdmin } from "@/lib/admin";
 import { PreferenciaWhatsapp } from "./_componentes/preferencia-whatsapp";
 import { IntegracaoWhatsapp } from "./_componentes/integracao-whatsapp";
 import { EscolherFundo } from "./_componentes/escolher-fundo";
+import { ConfigDemandas } from "./_componentes/config-demandas";
+import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 
 export const metadata = { title: "Ajustes" };
 
@@ -18,6 +20,7 @@ export default async function PaginaAjustes() {
   const admin = ehAdmin(perfil.email);
 
   const config = chefe ? await obterConfigWhatsapp() : null;
+  const configDemandas = chefe ? await obterConfigDemandas() : null;
 
   return (
     <>
@@ -82,6 +85,18 @@ export default async function PaginaAjustes() {
             </div>
           )}
         </section>
+
+        {chefe && configDemandas && (
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold">Status das demandas</h2>
+            <p className="mt-1 text-sm text-fg-secondary">
+              Personalize os status dos quadros de tarefas do escritório.
+            </p>
+            <div className="mt-4 rounded-[var(--radius)] border border-border bg-surface p-4">
+              <ConfigDemandas config={configDemandas} />
+            </div>
+          </section>
+        )}
       </main>
     </>
   );
