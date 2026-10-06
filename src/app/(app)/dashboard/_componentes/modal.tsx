@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 /**
@@ -16,7 +17,10 @@ export function Modal({
   aoFechar: () => void;
   children: ReactNode;
 }) {
+  const [montado, setMontado] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMontado(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") aoFechar();
     };
@@ -29,7 +33,12 @@ export function Modal({
     };
   }, [aoFechar]);
 
-  return (
+  if (!montado) return null;
+
+  // Portal no body: escapa de ancestrais com backdrop-filter/transform (ex.: a
+  // barra lateral), que senão prenderiam o `position: fixed` e deixariam parte
+  // da tela sem cobertura.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6"
       style={{
@@ -62,6 +71,7 @@ export function Modal({
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
