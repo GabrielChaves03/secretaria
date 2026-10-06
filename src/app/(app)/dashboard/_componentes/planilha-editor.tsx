@@ -164,10 +164,10 @@ export function PlanilhaEditor({
         onScroll={() => syncDe("body")}
         className="max-h-[68vh] overflow-auto rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]"
       >
-        <table ref={tableRef} className="border-collapse">
+        <table ref={tableRef} className="border-separate border-spacing-0">
           <thead>
             <tr className="text-left">
-              <th className={`${thSticky} left-0 z-20 w-12 border-b-2 border-border px-3 py-3 text-xs font-medium text-fg-tertiary`}>
+              <th className={`${thSticky} left-0 z-20 w-12 border-b-2 border-r border-border px-3 py-3 text-xs font-medium text-fg-tertiary`}>
                 #
               </th>
               {cols.map((c) => (
@@ -205,8 +205,8 @@ export function PlanilhaEditor({
           </thead>
           <tbody>
             {linhas.map((l, i) => (
-              <tr key={l.id} className="group border-b border-border/50">
-                <td className="sticky left-0 z-[5] w-12 bg-surface px-3 py-1.5 text-center text-xs text-fg-tertiary">
+              <tr key={l.id} className="group [&>td]:border-b [&>td]:border-border/50">
+                <td className="sticky left-0 z-[5] w-12 border-r border-border bg-surface px-3 py-1.5 text-center text-xs text-fg-tertiary">
                   {i + 1}
                 </td>
                 {cols.map((c) =>
