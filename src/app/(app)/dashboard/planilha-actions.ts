@@ -206,3 +206,22 @@ export async function alterarTipoColuna(
   await supabase.from("quadros").update({ planilha_colunas: prox }).eq("id", quadroId);
   revalidatePath(`/dashboard/planilha/${quadroId}`);
 }
+
+/** Define a cor de um valor de seleção (qualquer membro, via RPC segura). */
+export async function definirCorValor(
+  quadroId: string,
+  colunaId: string,
+  valor: string,
+  cor: string,
+) {
+  await requererUsuario();
+  if (!quadroId || !colunaId || !valor) return;
+  const supabase = await criarClienteServidor();
+  await supabase.rpc("definir_cor_valor_planilha", {
+    p_quadro: quadroId,
+    p_coluna: colunaId,
+    p_valor: valor,
+    p_cor: cor,
+  });
+  revalidatePath(`/dashboard/planilha/${quadroId}`);
+}

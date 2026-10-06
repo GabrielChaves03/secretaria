@@ -9,24 +9,26 @@ import {
   alterarTipoColuna,
   apagarColuna,
   apagarLinha,
+  definirCorValor,
   renomearColuna,
   salvarLinha,
 } from "@/app/(app)/dashboard/planilha-actions";
 import { corTextoSobre } from "@/lib/demandas";
 import type { ColunaPlanilha, LinhaPlanilha, TipoColunaPlanilha } from "@/lib/planilha";
 
-/** Paleta estilo Monday para as células de seleção. */
 const PALETA = [
   "#00C875", "#579BFC", "#FDAB3D", "#E2445C", "#A25DDC", "#00D2D2",
   "#FF5AC4", "#FF642E", "#037F4C", "#0073EA", "#CAB641", "#7E5EF2",
 ];
 
-/** Cor estável para um valor de seleção (mesma cor sempre que o valor repete). */
-function corDeValor(valor: string): string {
+/** Cor automática (fallback) estável para um valor de seleção. */
+function corAuto(valor: string): string {
   let h = 0;
   for (let i = 0; i < valor.length; i++) h = (h * 31 + valor.charCodeAt(i)) >>> 0;
   return PALETA[h % PALETA.length];
 }
+
+const MAX_COL = 360; // teto de largura de coluna (px)
 
 export function PlanilhaEditor({
   quadroId,
@@ -43,6 +45,13 @@ export function PlanilhaEditor({
   const [linhas, setLinhas] = useState(linhasIniciais);
   const [cols, setCols] = useState(colunas);
   const [novaColuna, setNovaColuna] = useState(false);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [largura, setLargura] = useState(0);
+
+  const topRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const syncing = useRef(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -53,7 +62,27 @@ export function PlanilhaEditor({
     setCols(colunas);
   }, [colunas]);
 
-  // Valores distintos por coluna de seleção — para o dropdown.
+  // Mede a largura da tabela para a barra de rolagem de cima.
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    const medir = () => setLargura(el.scrollWidth);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [cols, linhas]);
+
+  function syncDe(origem: "top" | "body") {
+    if (syncing.current) return;
+    syncing.current = true;
+    if (origem === "top" && bodyRef.current && topRef.current)
+      bodyRef.current.scrollLeft = topRef.current.scrollLeft;
+    if (origem === "body" && bodyRef.current && topRef.current)
+      topRef.current.scrollLeft = bodyRef.current.scrollLeft;
+    requestAnimationFrame(() => (syncing.current = false));
+  }
+
   const opcoesPorColuna = useMemo(() => {
     const m: Record<string, string[]> = {};
     for (const c of cols) {
@@ -70,20 +99,27 @@ export function PlanilhaEditor({
 
   function editarCelula(linhaId: string, colId: string, valor: string) {
     setLinhas((ls) =>
-      ls.map((l) =>
-        l.id === linhaId ? { ...l, valores: { ...l.valores, [colId]: valor } } : l,
-      ),
+      ls.map((l) => (l.id === linhaId ? { ...l, valores: { ...l.valores, [colId]: valor } } : l)),
     );
   }
-
   async function persistir(linhaId: string, valores?: Record<string, string>) {
     const l = linhas.find((x) => x.id === linhaId);
     await salvarLinha(linhaId, valores ?? l?.valores ?? {});
   }
-
   function mudarTipo(colId: string, tipo: ColunaPlanilha["tipo"]) {
     setCols((cs) => cs.map((c) => (c.id === colId ? { ...c, tipo } : c)));
     alterarTipoColuna(quadroId, colId, tipo);
+  }
+  function corDoValor(col: ColunaPlanilha, valor: string) {
+    return col.cores?.[valor] ?? corAuto(valor);
+  }
+  function mudarCorValor(colId: string, valor: string, cor: string) {
+    setCols((cs) =>
+      cs.map((c) =>
+        c.id === colId ? { ...c, cores: { ...(c.cores ?? {}), [valor]: cor } } : c,
+      ),
+    );
+    definirCorValor(quadroId, colId, valor, cor);
   }
 
   if (cols.length === 0) {
@@ -109,15 +145,37 @@ export function PlanilhaEditor({
     );
   }
 
+  const thSticky = "sticky top-0 z-10 bg-raised";
+
   return (
     <div className="mt-4">
-      <div className="overflow-x-auto rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]">
-        <table className="w-full border-collapse">
+      {/* Barra de rolagem horizontal no topo (sincronizada) */}
+      <div
+        ref={topRef}
+        onScroll={() => syncDe("top")}
+        className="overflow-x-auto"
+        style={{ height: 14 }}
+      >
+        <div style={{ width: largura, height: 1 }} />
+      </div>
+
+      <div
+        ref={bodyRef}
+        onScroll={() => syncDe("body")}
+        className="max-h-[68vh] overflow-auto rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]"
+      >
+        <table ref={tableRef} className="border-collapse">
           <thead>
-            <tr className="border-b-2 border-border bg-raised text-left">
-              <th className="w-12 px-3 py-3 text-xs font-medium text-fg-tertiary">#</th>
+            <tr className="text-left">
+              <th className={`${thSticky} left-0 z-20 w-12 border-b-2 border-border px-3 py-3 text-xs font-medium text-fg-tertiary`}>
+                #
+              </th>
               {cols.map((c) => (
-                <th key={c.id} className="min-w-[180px] border-l border-border/60 px-3 py-2.5">
+                <th
+                  key={c.id}
+                  className={`${thSticky} border-b-2 border-l border-border px-3 py-2.5`}
+                  style={{ maxWidth: MAX_COL }}
+                >
                   <CabecalhoColuna
                     quadroId={quadroId}
                     coluna={c}
@@ -131,7 +189,7 @@ export function PlanilhaEditor({
                 </th>
               ))}
               {ehChefe && (
-                <th className="w-12 border-l border-border/60 px-2 py-2.5 text-center">
+                <th className={`${thSticky} w-12 border-b-2 border-l border-border px-2 py-2.5 text-center`}>
                   <button
                     type="button"
                     onClick={() => setNovaColuna(true)}
@@ -142,38 +200,49 @@ export function PlanilhaEditor({
                   </button>
                 </th>
               )}
-              <th className="w-10 px-2 py-2.5" />
+              <th className={`${thSticky} w-10 border-b-2 border-border px-2 py-2.5`} />
             </tr>
           </thead>
           <tbody>
             {linhas.map((l, i) => (
-              <tr
-                key={l.id}
-                className={`group border-b border-border/50 transition-colors hover:bg-surface-hover/50 ${
-                  i % 2 ? "bg-surface-hover/15" : ""
-                }`}
-              >
-                <td className="px-3 py-1.5 text-center text-xs text-fg-tertiary">{i + 1}</td>
+              <tr key={l.id} className="group border-b border-border/50">
+                <td className="sticky left-0 z-[5] w-12 bg-surface px-3 py-1.5 text-center text-xs text-fg-tertiary">
+                  {i + 1}
+                </td>
                 {cols.map((c) =>
                   c.tipo === "select" ? (
-                    <td key={c.id} className="border-l border-border/40 p-0 align-middle">
+                    <td
+                      key={c.id}
+                      className="border-l border-border/40 p-0 align-middle"
+                      style={{ maxWidth: MAX_COL }}
+                    >
                       <CelulaSelect
                         valor={l.valores?.[c.id] ?? ""}
                         opcoes={opcoesPorColuna[c.id] ?? []}
+                        cor={(v) => corDoValor(c, v)}
                         aoEscolher={(v) => {
                           editarCelula(l.id, c.id, v);
-                          const novos = { ...l.valores, [c.id]: v };
-                          persistir(l.id, novos);
+                          persistir(l.id, { ...l.valores, [c.id]: v });
                         }}
+                        aoCor={(v, cor) => mudarCorValor(c.id, v, cor)}
                       />
                     </td>
                   ) : (
-                    <td key={c.id} className="border-l border-border/40 px-1.5 py-1 align-top">
-                      <Celula
+                    <td
+                      key={c.id}
+                      className="border-l border-border/40 align-top"
+                      style={{ maxWidth: MAX_COL }}
+                    >
+                      <CelulaTexto
                         tipo={c.tipo}
                         valor={l.valores?.[c.id] ?? ""}
+                        editando={editando === `${l.id}:${c.id}`}
+                        aoEditar={() => setEditando(`${l.id}:${c.id}`)}
                         aoMudar={(v) => editarCelula(l.id, c.id, v)}
-                        aoSair={() => persistir(l.id)}
+                        aoSair={() => {
+                          setEditando(null);
+                          persistir(l.id);
+                        }}
                       />
                     </td>
                   ),
@@ -203,21 +272,22 @@ export function PlanilhaEditor({
             )}
           </tbody>
         </table>
+      </div>
 
+      <div className="mt-2 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={async () => {
             await adicionarLinha(quadroId);
             router.refresh();
           }}
-          className="flex w-full items-center gap-2 border-t border-border px-3 py-2.5 text-left text-sm text-fg-tertiary transition-colors hover:bg-surface-hover hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-[var(--radius)] px-3 py-1.5 text-sm text-fg-secondary shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-surface-hover hover:text-foreground"
         >
           <Plus className="h-4 w-4" /> Nova linha
         </button>
-      </div>
-
-      <div className="mt-2 text-xs text-fg-tertiary">
-        {linhas.length} linha{linhas.length === 1 ? "" : "s"} · {cols.length} colunas
+        <span className="text-xs text-fg-tertiary">
+          {linhas.length} linha{linhas.length === 1 ? "" : "s"} · {cols.length} colunas
+        </span>
       </div>
 
       {novaColuna && (
@@ -250,7 +320,11 @@ function CabecalhoColuna({
   const [nome, setNome] = useState(coluna.nome);
 
   if (!ehChefe) {
-    return <span className="text-sm font-semibold text-foreground">{coluna.nome}</span>;
+    return (
+      <span className="block truncate text-sm font-semibold text-foreground" title={coluna.nome}>
+        {coluna.nome}
+      </span>
+    );
   }
 
   return (
@@ -263,7 +337,8 @@ function CabecalhoColuna({
           if (n && n !== coluna.nome) renomearColuna(quadroId, coluna.id, n);
           else setNome(coluna.nome);
         }}
-        className="min-w-0 flex-1 rounded-[var(--radius-sm)] bg-transparent text-sm font-semibold text-foreground outline-none focus:bg-surface-hover focus:px-1.5 focus:py-0.5"
+        style={{ width: `${Math.min(26, Math.max(6, nome.length))}ch` }}
+        className="rounded-[var(--radius-sm)] bg-transparent text-sm font-semibold text-foreground outline-none focus:bg-surface-hover"
       />
       <select
         value={coluna.tipo}
@@ -290,15 +365,69 @@ function CabecalhoColuna({
   );
 }
 
-/** Célula de seleção colorida (estilo Monday): a cor segue o valor. */
+function CelulaTexto({
+  tipo,
+  valor,
+  editando,
+  aoEditar,
+  aoMudar,
+  aoSair,
+}: {
+  tipo: TipoColunaPlanilha;
+  valor: string;
+  editando: boolean;
+  aoEditar: () => void;
+  aoMudar: (v: string) => void;
+  aoSair: () => void;
+}) {
+  if (editando) {
+    return (
+      <input
+        type={tipo === "link" ? "url" : "text"}
+        autoFocus
+        value={valor}
+        onChange={(e) => aoMudar(e.target.value)}
+        onBlur={aoSair}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        placeholder={tipo === "link" ? "https://..." : ""}
+        className="w-full min-w-[200px] rounded-[var(--radius-sm)] bg-surface-hover px-2 py-1.5 text-sm outline-none"
+      />
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 px-2 py-1.5">
+      <button
+        type="button"
+        onClick={aoEditar}
+        title={valor || undefined}
+        className="max-w-full flex-1 cursor-text truncate whitespace-nowrap text-left text-sm text-fg-secondary"
+        style={{ maxWidth: MAX_COL - 24 }}
+      >
+        {valor || <span className="text-fg-tertiary">—</span>}
+      </button>
+      {tipo === "link" && valor && (
+        <a href={valor} target="_blank" rel="noreferrer" className="shrink-0 text-accent">
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
 function CelulaSelect({
   valor,
   opcoes,
+  cor,
   aoEscolher,
+  aoCor,
 }: {
   valor: string;
   opcoes: string[];
+  cor: (v: string) => string;
   aoEscolher: (v: string) => void;
+  aoCor: (v: string, cor: string) => void;
 }) {
   const [aberto, setAberto] = useState(false);
   const [novo, setNovo] = useState("");
@@ -313,42 +442,47 @@ function CelulaSelect({
     return () => document.removeEventListener("mousedown", fora);
   }, [aberto]);
 
-  const cor = valor ? corDeValor(valor) : null;
+  const c = valor ? cor(valor) : null;
 
   return (
     <div ref={ref} className="relative h-full">
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
-        className="flex h-full min-h-[34px] w-full items-center justify-center px-2 py-1.5 text-center text-sm font-medium transition-opacity hover:opacity-90"
-        style={
-          cor
-            ? { background: cor, color: corTextoSobre(cor) }
-            : { color: "var(--foreground-tertiary)" }
-        }
+        className="flex h-full min-h-[34px] w-full items-center justify-center truncate px-2 py-1.5 text-center text-sm font-medium transition-opacity hover:opacity-90"
+        style={c ? { background: c, color: corTextoSobre(c) } : { color: "var(--foreground-tertiary)" }}
+        title={valor || undefined}
       >
         {valor || "—"}
       </button>
 
       {aberto && (
         <div
-          className="absolute left-0 top-full z-50 mt-1 w-48 rounded-[var(--radius)] bg-overlay p-1.5"
+          className="absolute left-0 top-full z-50 mt-1 w-56 rounded-[var(--radius)] bg-overlay p-1.5"
           style={{ boxShadow: "var(--shadow-pop)" }}
         >
           <div className="flex flex-col gap-0.5">
             {opcoes.map((o) => (
-              <button
-                key={o}
-                type="button"
-                onClick={() => {
-                  aoEscolher(o);
-                  setAberto(false);
-                }}
-                className="rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs font-medium"
-                style={{ background: corDeValor(o), color: corTextoSobre(corDeValor(o)) }}
-              >
-                {o}
-              </button>
+              <div key={o} className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    aoEscolher(o);
+                    setAberto(false);
+                  }}
+                  className="flex-1 truncate rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs font-medium"
+                  style={{ background: cor(o), color: corTextoSobre(cor(o)) }}
+                >
+                  {o}
+                </button>
+                <input
+                  type="color"
+                  value={cor(o)}
+                  onChange={(e) => aoCor(o, e.target.value)}
+                  title="Cor deste valor"
+                  className="h-6 w-6 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                />
+              </div>
             ))}
             {valor && (
               <button
@@ -384,47 +518,6 @@ function CelulaSelect({
         </div>
       )}
     </div>
-  );
-}
-
-function Celula({
-  tipo,
-  valor,
-  aoMudar,
-  aoSair,
-}: {
-  tipo: TipoColunaPlanilha;
-  valor: string;
-  aoMudar: (v: string) => void;
-  aoSair: () => void;
-}) {
-  if (tipo === "link") {
-    return (
-      <div className="flex items-center gap-1">
-        <input
-          type="url"
-          value={valor}
-          onChange={(e) => aoMudar(e.target.value)}
-          onBlur={aoSair}
-          placeholder="https://..."
-          className="w-full rounded-[var(--radius-sm)] bg-transparent px-2 py-1.5 text-sm text-fg-secondary outline-none focus:bg-surface-hover"
-        />
-        {valor && (
-          <a href={valor} target="_blank" rel="noreferrer" className="shrink-0 text-accent">
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
-      </div>
-    );
-  }
-  return (
-    <input
-      type="text"
-      value={valor}
-      onChange={(e) => aoMudar(e.target.value)}
-      onBlur={aoSair}
-      className="w-full rounded-[var(--radius-sm)] bg-transparent px-2 py-1.5 text-sm outline-none focus:bg-surface-hover"
-    />
   );
 }
 

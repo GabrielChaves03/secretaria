@@ -11,6 +11,8 @@ export type ColunaPlanilha = {
   tipo: TipoColunaPlanilha;
   /** Opções, quando tipo = "select". */
   opcoes?: string[];
+  /** Cor por valor (seleção), escolhida pelo usuário. */
+  cores?: Record<string, string>;
 };
 
 export type LinhaPlanilha = {
