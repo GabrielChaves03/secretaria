@@ -577,3 +577,17 @@ header.bg-sidebar {
   font-weight: 700;
   color: var(--accent-subtle-fg);
 }
+
+/* Tabelas com rolagem lateral (planilhas, visão Tabela do quadro).
+   O body tem fundo `fixed` + grão com mix-blend-mode por cima de tudo, o que
+   faz o Chrome repintar a área rolável na thread principal — ao arrastar a
+   barra, metade das linhas aparecia na posição velha e metade na nova
+   (linhas "rasgadas"/desalinhadas). Camada própria na GPU = rolagem composta,
+   sem repintura parcial. Use sempre esta classe (ou <TabelaRolavel>) em
+   qualquer contêiner com overflow-x de tabela. */
+.rolagem-tabela {
+  transform: translateZ(0);
+  will-change: transform;
+  isolation: isolate;
+  overscroll-behavior-x: contain;
+}

@@ -13,6 +13,7 @@ import {
   renomearColuna,
   salvarLinha,
 } from "@/app/(app)/dashboard/planilha-actions";
+import { TabelaRolavel } from "@/app/(app)/dashboard/_componentes/tabela-rolavel";
 import { corTextoSobre } from "@/lib/demandas";
 import type { ColunaPlanilha, LinhaPlanilha, TipoColunaPlanilha } from "@/lib/planilha";
 
@@ -46,12 +47,6 @@ export function PlanilhaEditor({
   const [cols, setCols] = useState(colunas);
   const [novaColuna, setNovaColuna] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
-  const [largura, setLargura] = useState(0);
-
-  const topRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
-  const syncing = useRef(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -61,27 +56,6 @@ export function PlanilhaEditor({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCols(colunas);
   }, [colunas]);
-
-  // Mede a largura da tabela para a barra de rolagem de cima.
-  useEffect(() => {
-    const el = tableRef.current;
-    if (!el) return;
-    const medir = () => setLargura(el.scrollWidth);
-    medir();
-    const ro = new ResizeObserver(medir);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [cols, linhas]);
-
-  function syncDe(origem: "top" | "body") {
-    if (syncing.current) return;
-    syncing.current = true;
-    if (origem === "top" && bodyRef.current && topRef.current)
-      bodyRef.current.scrollLeft = topRef.current.scrollLeft;
-    if (origem === "body" && bodyRef.current && topRef.current)
-      topRef.current.scrollLeft = bodyRef.current.scrollLeft;
-    requestAnimationFrame(() => (syncing.current = false));
-  }
 
   const opcoesPorColuna = useMemo(() => {
     const m: Record<string, string[]> = {};
@@ -149,22 +123,8 @@ export function PlanilhaEditor({
 
   return (
     <div className="mt-4">
-      {/* Barra de rolagem horizontal no topo (sincronizada) */}
-      <div
-        ref={topRef}
-        onScroll={() => syncDe("top")}
-        className="overflow-x-auto"
-        style={{ height: 14 }}
-      >
-        <div style={{ width: largura, height: 1 }} />
-      </div>
-
-      <div
-        ref={bodyRef}
-        onScroll={() => syncDe("body")}
-        className="max-h-[68vh] overflow-auto rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]"
-      >
-        <table ref={tableRef} className="border-separate border-spacing-0">
+      <TabelaRolavel className="max-h-[68vh] rounded-[var(--radius-lg)] bg-surface shadow-[inset_0_0_0_1px_var(--border)]">
+        <table className="border-separate border-spacing-0">
           <thead>
             <tr className="text-left">
               <th className={`${thSticky} left-0 z-20 w-12 border-b-2 border-r border-border px-3 py-3 text-xs font-medium text-fg-tertiary`}>
@@ -272,7 +232,7 @@ export function PlanilhaEditor({
             )}
           </tbody>
         </table>
-      </div>
+      </TabelaRolavel>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <button

@@ -253,7 +253,7 @@ function GrupoTabela({
       </div>
 
       {aberto && (
-        <div className="overflow-x-auto">
+        <div className="rolagem-tabela overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-fg-tertiary">
