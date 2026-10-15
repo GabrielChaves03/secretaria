@@ -21,6 +21,8 @@ export type ColunaDemanda = {
   sistema: boolean;
   /** Só colunas personalizadas do tipo "selecao": valores possíveis. */
   opcoes?: string[];
+  /** Cor de cada valor de seleção ({valor: cor}); sem entrada = cor automática. */
+  cores?: Record<string, string>;
 };
 
 /** Tipos que o chefe pode escolher ao criar uma coluna personalizada. */
@@ -32,9 +34,42 @@ export const TIPOS_PERSONALIZADOS: { tipo: TipoColuna; rotulo: string }[] = [
   { tipo: "selecao", rotulo: "Seleção" },
 ];
 
-/** Colunas criadas pelo escritório (valor guardado em `demandas.campos[id]`). */
+/** Colunas personalizadas (valor guardado em `demandas.campos[id]`). */
 export function colunasPersonalizadas(cfg: ConfigDemandas): ColunaDemanda[] {
   return cfg.colunas.filter((c) => !c.sistema);
+}
+
+/** Ids das colunas de sistema — fixas no código, não podem ser excluídas. */
+export const IDS_SISTEMA = CONFIG_PADRAO_COLUNAS().map((c) => c.id);
+
+function CONFIG_PADRAO_COLUNAS(): ColunaDemanda[] {
+  return [
+    { id: "responsavel", nome: "Responsável", tipo: "pessoa", ativo: true, sistema: true },
+    { id: "status", nome: "Status", tipo: "status", ativo: true, sistema: true },
+    { id: "prazo", nome: "Prazo", tipo: "data", ativo: true, sistema: true },
+    { id: "prioridade", nome: "Prioridade", tipo: "prioridade", ativo: true, sistema: true },
+    { id: "notas", nome: "Notas", tipo: "texto", ativo: true, sistema: true },
+    { id: "link", nome: "Link", tipo: "link", ativo: true, sistema: true },
+  ];
+}
+
+/**
+ * Colunas de UM quadro: as que ele salvou (`quadros.colunas_demandas`) ou, se
+ * ainda não foi personalizado, as de sistema do escritório. Garante que toda
+ * coluna de sistema existe (uma que faltar volta no fim, visível).
+ */
+export function colunasDoQuadro(cfg: ConfigDemandas, salvas: unknown): ColunaDemanda[] {
+  const base = Array.isArray(salvas)
+    ? (salvas as ColunaDemanda[]).filter((c) => c && typeof c.id === "string")
+    : cfg.colunas.filter((c) => c.sistema);
+  const ids = new Set(base.map((c) => c.id));
+  const faltando = CONFIG_PADRAO_COLUNAS().filter((c) => !ids.has(c.id));
+  return [...base, ...faltando];
+}
+
+/** Config do escritório com as colunas trocadas pelas do quadro. */
+export function configDoQuadro(cfg: ConfigDemandas, salvas: unknown): ConfigDemandas {
+  return { ...cfg, colunas: colunasDoQuadro(cfg, salvas) };
 }
 
 export type ConfigDemandas = {

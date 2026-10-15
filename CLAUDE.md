@@ -406,8 +406,12 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   barra extra no topo sincronizada) ou a classe `.rolagem-tabela` (globals.css). Sem isso a tabela
   "rasga" ao rolar (fundo `fixed` + grão com blend). Dentro dela **não** usar overlay `fixed inset-0`
   pra fechar menu (o transform prende o fixed à tabela) — usar listener de `mousedown` fora.
-- **Colunas personalizadas das demandas:** definidas pelo chefe em Ajustes → (config de demandas),
-  guardadas em `escritorio_demandas_config.colunas` (`sistema: false`, id `c_xxxxxxxx`, tipos
-  texto/numero/data/link/selecao + `opcoes`). Valor em `demandas.campos[id]` (jsonb). Form usa
-  inputs `campo:<id>`; célula da Tabela edita inline via `salvarCampoDemanda()` (sem aviso WhatsApp).
-  Remover coluna só some da tela — os valores ficam em `campos`.
+- **Colunas das demandas são POR QUADRO** (migration 0023): `quadros.colunas_demandas` jsonb = lista
+  completa e ordenada (sistema: responsavel/status/prazo/prioridade/notas/link — renomeáveis/ocultáveis,
+  responsavel+status nunca somem; personalizadas: id `c_xxxxxxxx`, tipos texto/numero/data/link/selecao
+  + `opcoes` + `cores`). NULL = padrão (`colunasDoQuadro`/`configDoQuadro` em `lib/demandas-config.ts`).
+  Editadas direto no cabeçalho da visão Tabela (`board-tabela.tsx`: CabecalhoColuna / BotaoNovaColuna)
+  por QUALQUER membro, via RPC `salvar_colunas_quadro` (`quadro-colunas-actions.ts`). Valores em
+  `demandas.campos[id]`; célula edita inline via `salvarCampoDemanda()` (sem aviso WhatsApp). Excluir
+  coluna só some da tela — os valores ficam em `campos`. Menus dentro da tabela usam `<Popover>`
+  (`_componentes/popover.tsx`, portal no body). Ajustes não mexe mais em colunas (só status).

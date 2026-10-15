@@ -23,7 +23,7 @@ const PALETA = [
 ];
 
 /** Cor automática (fallback) estável para um valor de seleção. */
-function corAuto(valor: string): string {
+export function corAuto(valor: string): string {
   let h = 0;
   for (let i = 0; i < valor.length; i++) h = (h * 31 + valor.charCodeAt(i)) >>> 0;
   return PALETA[h % PALETA.length];

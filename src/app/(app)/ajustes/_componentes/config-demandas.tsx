@@ -3,19 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react";
-import {
-  salvarColunasAtivas,
-  salvarColunasPersonalizadas,
-  salvarStatusConfig,
-} from "@/app/(app)/ajustes/demandas-config-actions";
+import { salvarStatusConfig } from "@/app/(app)/ajustes/demandas-config-actions";
 import { corTextoSobre } from "@/lib/demandas";
 import { STATUS_CONCLUIDO } from "@/lib/demandas";
-import {
-  colunasPersonalizadas,
-  TIPOS_PERSONALIZADOS,
-  type ConfigDemandas,
-  type TipoColuna,
-} from "@/lib/demandas-config";
+import type { ConfigDemandas } from "@/lib/demandas-config";
 
 type Linha = { original: string | null; nome: string; cor: string };
 
@@ -77,10 +68,6 @@ export function ConfigDemandas({ config }: { config: ConfigDemandas }) {
       router.refresh();
     }
   }
-
-  const colsToggle = config.colunas.filter(
-    (c) => c.id !== "responsavel" && c.id !== "status",
-  );
 
   return (
     <div className="space-y-6">
@@ -173,195 +160,11 @@ export function ConfigDemandas({ config }: { config: ConfigDemandas }) {
         </div>
       </div>
 
-      <div className="border-t border-border pt-5">
-        <h4 className="text-sm font-medium">Colunas personalizadas</h4>
-        <p className="mt-1 text-xs text-fg-tertiary">
-          Campos extras que toda demanda passa a ter (ex.: Cliente, Valor, Canal).
-          Aparecem na visão Tabela dos quadros e no formulário da demanda.
-        </p>
-        <ColunasPersonalizadas
-          key={colunasPersonalizadas(config).map((c) => c.id).join()}
-          config={config}
-          aoSalvar={() => router.refresh()}
-        />
-      </div>
-
-      <div className="border-t border-border pt-5">
-        <h4 className="text-sm font-medium">Colunas das demandas</h4>
-        <p className="mt-1 text-xs text-fg-tertiary">
-          Quais colunas aparecem na visão Tabela dos quadros de tarefas.
-          (Responsável e Status são fixos.)
-        </p>
-        <ColunasToggle
-          key={colsToggle.map((c) => c.id).join()}
-          colsToggle={colsToggle}
-          aoSalvar={() => router.refresh()}
-        />
-      </div>
+      <p className="border-t border-border pt-5 text-xs text-fg-tertiary">
+        As colunas das demandas (criar, renomear, ocultar, reordenar) são
+        configuradas em cada quadro, direto no cabeçalho da visão Tabela.
+      </p>
     </div>
   );
 }
 
-function ColunasToggle({
-  colsToggle,
-  aoSalvar,
-}: {
-  colsToggle: ConfigDemandas["colunas"];
-  aoSalvar: () => void;
-}) {
-  const [ativos, setAtivos] = useState<Record<string, boolean>>(
-    Object.fromEntries(colsToggle.map((c) => [c.id, c.ativo])),
-  );
-  const [salvando, setSalvando] = useState(false);
-
-  return (
-    <div className="mt-3 space-y-2">
-      {colsToggle.map((c) => (
-        <label key={c.id} className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={ativos[c.id] ?? c.ativo}
-            onChange={(e) => setAtivos((a) => ({ ...a, [c.id]: e.target.checked }))}
-            className="h-4 w-4 accent-[var(--accent)]"
-          />
-          {c.nome}
-        </label>
-      ))}
-      <button
-        type="button"
-        onClick={async () => {
-          setSalvando(true);
-          await salvarColunasAtivas(ativos);
-          setSalvando(false);
-          aoSalvar();
-        }}
-        disabled={salvando}
-        className="btn btn-secondary btn-sm mt-1"
-      >
-        {salvando ? "Salvando…" : "Salvar colunas"}
-      </button>
-    </div>
-  );
-}
-
-type LinhaColuna = { id: string | null; nome: string; tipo: TipoColuna; opcoes: string };
-
-function ColunasPersonalizadas({
-  config,
-  aoSalvar,
-}: {
-  config: ConfigDemandas;
-  aoSalvar: () => void;
-}) {
-  const [linhas, setLinhas] = useState<LinhaColuna[]>(
-    colunasPersonalizadas(config).map((c) => ({
-      id: c.id,
-      nome: c.nome,
-      tipo: c.tipo,
-      opcoes: (c.opcoes ?? []).join(", "),
-    })),
-  );
-  const [salvando, setSalvando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  function set(i: number, patch: Partial<LinhaColuna>) {
-    setLinhas((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
-  }
-
-  async function salvar() {
-    setSalvando(true);
-    setMsg(null);
-    const r = await salvarColunasPersonalizadas(
-      linhas.map((l) => ({
-        id: l.id,
-        nome: l.nome,
-        tipo: l.tipo,
-        opcoes: l.opcoes.split(","),
-      })),
-    );
-    setSalvando(false);
-    if (r && "erro" in r) setMsg(r.erro ?? "Erro ao salvar.");
-    else {
-      setMsg("Colunas salvas.");
-      aoSalvar();
-    }
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      {linhas.length === 0 && (
-        <p className="text-sm text-fg-tertiary">Nenhuma coluna personalizada ainda.</p>
-      )}
-      {linhas.map((l, i) => (
-        <div key={l.id ?? `nova-${i}`} className="flex flex-wrap items-center gap-2">
-          <input
-            value={l.nome}
-            onChange={(e) => set(i, { nome: e.target.value })}
-            placeholder="Nome da coluna"
-            maxLength={40}
-            className="campo !py-1.5 min-w-0 flex-1"
-          />
-          <select
-            value={l.tipo}
-            onChange={(e) => set(i, { tipo: e.target.value as TipoColuna })}
-            className="campo !py-1.5 !w-auto"
-            aria-label="Tipo"
-          >
-            {TIPOS_PERSONALIZADOS.map((t) => (
-              <option key={t.tipo} value={t.tipo}>
-                {t.rotulo}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                l.id &&
-                !confirm(
-                  `Remover a coluna "${l.nome}"? Ela some da tabela e do formulário.`,
-                )
-              )
-                return;
-              setLinhas((ls) => ls.filter((_, j) => j !== i));
-            }}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-danger"
-            aria-label="Remover"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-          {l.tipo === "selecao" && (
-            <input
-              value={l.opcoes}
-              onChange={(e) => set(i, { opcoes: e.target.value })}
-              placeholder="Opções separadas por vírgula (ex.: Instagram, TikTok, Site)"
-              className="campo !py-1.5 basis-full text-sm"
-            />
-          )}
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={() =>
-          setLinhas((ls) => [...ls, { id: null, nome: "", tipo: "texto", opcoes: "" }])
-        }
-        className="flex items-center gap-1.5 text-sm text-fg-secondary hover:text-foreground"
-      >
-        <Plus className="h-4 w-4" /> Adicionar coluna
-      </button>
-
-      <div className="flex items-center gap-3 pt-1">
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={salvando}
-          className="btn btn-secondary btn-sm"
-        >
-          {salvando ? "Salvando…" : "Salvar colunas personalizadas"}
-        </button>
-        {msg && <span className="text-sm text-fg-secondary">{msg}</span>}
-      </div>
-    </div>
-  );
-}

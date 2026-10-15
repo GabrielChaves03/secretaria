@@ -10,6 +10,7 @@ import {
 } from "@/lib/comentarios-consultas";
 import { obterOperacao, obterQuadro } from "@/lib/operacoes-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
+import { configDoQuadro } from "@/lib/demandas-config";
 import { hojeISO } from "@/lib/demandas";
 
 export const metadata = { title: "Quadro" };
@@ -63,7 +64,7 @@ export default async function PaginaQuadro({
       <VisaoQuadro
         quadroId={quadro.id}
         demandas={demandas}
-        config={config}
+        config={configDoQuadro(config, quadro.colunas_demandas)}
         grupos={{
           ordem: quadro.grupos_ordem ?? [],
           cores: quadro.grupos_cores ?? {},

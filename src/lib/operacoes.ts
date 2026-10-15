@@ -24,6 +24,8 @@ export type Quadro = {
   grupos_ordem: string[];
   grupos_cores: Record<string, string>;
   planilha_colunas: unknown[];
+  /** Colunas das demandas deste quadro (null = padrão). Ver `colunasDoQuadro`. */
+  colunas_demandas: unknown[] | null;
 };
 
 /** Quadro com a contagem de itens (tarefas ou linhas). */

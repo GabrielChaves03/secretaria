@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  EyeOff,
   MoreVertical,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
 import { Modal } from "@/app/(app)/dashboard/_componentes/modal";
+import { Popover } from "@/app/(app)/dashboard/_componentes/popover";
+import { corAuto } from "@/app/(app)/dashboard/_componentes/planilha-editor";
 import {
   FormularioDemanda,
   tipoInput,
@@ -26,6 +31,7 @@ import {
   corGrupo,
   renomearGrupo,
 } from "@/app/(app)/dashboard/quadro-grupos-actions";
+import { salvarColunasQuadro } from "@/app/(app)/dashboard/quadro-colunas-actions";
 import {
   corTextoSobre,
   ehConcluido,
@@ -34,25 +40,39 @@ import {
   type DemandaComDono,
 } from "@/lib/demandas";
 import {
-  colunasPersonalizadas,
   corDoStatus,
+  TIPOS_PERSONALIZADOS,
   type ColunaDemanda,
   type ConfigDemandas,
+  type TipoColuna,
 } from "@/lib/demandas-config";
 import { CORES_OPERACAO } from "@/lib/operacoes";
 import type { Membro } from "@/lib/escritorios";
 
 const FMT_DATA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 
+/** Colunas que o quadro não pode esconder (o board depende delas). */
+const FIXAS = new Set(["responsavel", "status"]);
+
 type Props = {
   quadroId: string;
   demandas: DemandaComDono[];
+  /** Config do escritório com `colunas` já trocadas pelas DESTE quadro. */
   config: ConfigDemandas;
   grupos: { ordem: string[]; cores: Record<string, string>; primeiro: string };
   membros?: Pick<Membro, "id" | "nome" | "papel">[];
   usuarioId: string;
   ehChefe: boolean;
   hoje: string;
+};
+
+/** Operações sobre as colunas do quadro (qualquer membro pode). */
+type EditorColunas = {
+  alterar: (id: string, patch: Partial<ColunaDemanda>) => void;
+  mover: (id: string, dir: -1 | 1) => void;
+  excluir: (id: string) => void;
+  adicionar: (nome: string, tipo: TipoColuna) => void;
+  ocultas: ColunaDemanda[];
 };
 
 export function BoardTabela({
@@ -73,9 +93,57 @@ export function BoardTabela({
     | null
   >(null);
 
-  const colunasAtivas = config.colunas.filter(
-    (c) => c.ativo && c.id !== "status" && c.id !== "responsavel",
+  // Colunas DESTE quadro — edição otimista, salva no servidor a cada mudança.
+  const [cols, setCols] = useState(config.colunas);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCols(config.colunas);
+  }, [config.colunas]);
+
+  const salvarCols = useCallback(
+    async (prox: ColunaDemanda[]) => {
+      setCols(prox);
+      const r = await salvarColunasQuadro(quadroId, prox);
+      if (r && "erro" in r) alert(r.erro);
+      router.refresh();
+    },
+    [quadroId, router],
   );
+
+  const visiveis = cols.filter((c) => c.ativo);
+  const ocultas = cols.filter((c) => !c.ativo);
+  const extrasForm = visiveis.filter((c) => !c.sistema);
+
+  const editor: EditorColunas = {
+    alterar: (id, patch) => salvarCols(cols.map((c) => (c.id === id ? { ...c, ...patch } : c))),
+    mover: (id, dir) => {
+      // Move entre as VISÍVEIS (pula as ocultas no meio do caminho).
+      const vis = cols.filter((c) => c.ativo);
+      const i = vis.findIndex((c) => c.id === id);
+      const alvo = vis[i + dir];
+      if (i < 0 || !alvo) return;
+      const prox = [...cols];
+      const a = prox.findIndex((c) => c.id === id);
+      const b = prox.findIndex((c) => c.id === alvo.id);
+      [prox[a], prox[b]] = [prox[b], prox[a]];
+      salvarCols(prox);
+    },
+    excluir: (id) => salvarCols(cols.filter((c) => c.id !== id)),
+    adicionar: (nome, tipo) =>
+      salvarCols([
+        ...cols,
+        {
+          id: `c_${crypto.randomUUID().slice(0, 8)}`,
+          nome: nome.trim().slice(0, 40),
+          tipo,
+          ativo: true,
+          sistema: false,
+          ...(tipo === "selecao" ? { opcoes: [] } : {}),
+        },
+      ]),
+    ocultas,
+  };
+
   const responsavelPadrao = membros?.find((m) => m.papel === "funcionario")?.id;
 
   // Ordem dos grupos: primeiro + os ordenados + os que só aparecem nas tarefas.
@@ -111,7 +179,8 @@ export function BoardTabela({
           cor={grupos.cores[g] ?? "#579BFC"}
           ehPrimeiro={g === grupos.primeiro}
           tarefas={porGrupo[g] ?? []}
-          colunasAtivas={colunasAtivas}
+          colunas={visiveis}
+          editor={editor}
           config={config}
           ehChefe={ehChefe}
           hoje={hoje}
@@ -141,7 +210,7 @@ export function BoardTabela({
             quadroId={quadroId}
             grupo={modal.grupo}
             statuses={config.statuses}
-            colunasExtras={colunasPersonalizadas(config)}
+            colunasExtras={extrasForm}
             aoConcluir={() => {
               setModal(null);
               router.refresh();
@@ -159,7 +228,7 @@ export function BoardTabela({
             membros={membros}
             usuarioId={usuarioId}
             statuses={config.statuses}
-            colunasExtras={colunasPersonalizadas(config)}
+            colunasExtras={extrasForm}
             aoConcluir={() => {
               setModal(null);
               router.refresh();
@@ -188,7 +257,8 @@ function GrupoTabela({
   cor,
   ehPrimeiro,
   tarefas,
-  colunasAtivas,
+  colunas,
+  editor,
   config,
   ehChefe,
   hoje,
@@ -200,7 +270,8 @@ function GrupoTabela({
   cor: string;
   ehPrimeiro: boolean;
   tarefas: DemandaComDono[];
-  colunasAtivas: ColunaDemanda[];
+  colunas: ColunaDemanda[];
+  editor: EditorColunas;
   config: ConfigDemandas;
   ehChefe: boolean;
   hoje: string;
@@ -269,14 +340,19 @@ function GrupoTabela({
             <thead>
               <tr className="border-b border-border text-left text-xs text-fg-tertiary">
                 <th className="px-3 py-2 font-medium">Tarefa</th>
-                <th className="px-3 py-2 font-medium">Responsável</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                {colunasAtivas.map((c) => (
-                  <th key={c.id} className="px-3 py-2 font-medium">
-                    {c.nome}
+                {colunas.map((c, i) => (
+                  <th key={c.id} className="px-2 py-1.5 font-medium">
+                    <CabecalhoColuna
+                      coluna={c}
+                      editor={editor}
+                      primeira={i === 0}
+                      ultima={i === colunas.length - 1}
+                    />
                   </th>
                 ))}
-                <th className="w-8 px-2 py-2" />
+                <th className="w-10 px-2 py-1.5">
+                  <BotaoNovaColuna editor={editor} />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -284,7 +360,8 @@ function GrupoTabela({
                 <LinhaTarefa
                   key={d.id}
                   demanda={d}
-                  colunasAtivas={colunasAtivas}
+                  colunas={colunas}
+                  editor={editor}
                   config={config}
                   hoje={hoje}
                   aoEditar={() => aoEditar(d)}
@@ -292,10 +369,7 @@ function GrupoTabela({
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={colunasAtivas.length + 4}
-                    className="px-3 py-3 text-xs text-fg-tertiary"
-                  >
+                  <td colSpan={colunas.length + 2} className="px-3 py-3 text-xs text-fg-tertiary">
                     Nada neste grupo ainda.
                   </td>
                 </tr>
@@ -306,7 +380,7 @@ function GrupoTabela({
                   <td className="px-3 py-2 font-medium">
                     {concluidas}/{total} concluídas
                   </td>
-                  <td className="px-3 py-2" colSpan={colunasAtivas.length + 3}>
+                  <td className="px-3 py-2" colSpan={colunas.length + 1}>
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 max-w-[200px] flex-1 overflow-hidden rounded-full bg-border">
                         <div
@@ -337,13 +411,15 @@ function GrupoTabela({
 
 function LinhaTarefa({
   demanda: d,
-  colunasAtivas,
+  colunas,
+  editor,
   config,
   hoje,
   aoEditar,
 }: {
   demanda: DemandaComDono;
-  colunasAtivas: ColunaDemanda[];
+  colunas: ColunaDemanda[];
+  editor: EditorColunas;
   config: ConfigDemandas;
   hoje: string;
   aoEditar: () => void;
@@ -360,19 +436,17 @@ function LinhaTarefa({
           {d.titulo}
         </button>
       </td>
-      <td className="px-3 py-2">
-        {d.dono_nome ? (
-          <span className="text-fg-secondary">{d.dono_nome}</span>
-        ) : (
-          <span className="text-fg-tertiary">—</span>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        <StatusPill demandaId={d.id} status={d.status} config={config} />
-      </td>
-      {colunasAtivas.map((c) => (
+      {colunas.map((c) => (
         <td key={c.id} className="px-3 py-2 text-fg-secondary">
-          {c.id === "prazo" ? (
+          {c.id === "responsavel" ? (
+            d.dono_nome ? (
+              <span className="text-fg-secondary">{d.dono_nome}</span>
+            ) : (
+              <span className="text-fg-tertiary">—</span>
+            )
+          ) : c.id === "status" ? (
+            <StatusPill demandaId={d.id} status={d.status} config={config} />
+          ) : c.id === "prazo" ? (
             <span className={atrasada ? "font-medium text-danger" : ""}>
               {d.data_entrega
                 ? FMT_DATA.format(new Date(`${d.data_entrega}T00:00:00`))
@@ -402,7 +476,12 @@ function LinhaTarefa({
               "—"
             )
           ) : (
-            <CelulaCampo demandaId={d.id} coluna={c} valor={d.campos?.[c.id] ?? ""} />
+            <CelulaCampo
+              demandaId={d.id}
+              coluna={c}
+              editor={editor}
+              valor={d.campos?.[c.id] ?? ""}
+            />
           )}
         </td>
       ))}
@@ -431,12 +510,14 @@ function StatusPill({
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
-  const ref = useFecharAoClicarFora<HTMLDivElement>(aberto, () => setAberto(false));
+  const ancora = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
   const cor = corDoStatus(config, status);
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={ancora}
         type="button"
         onClick={() => setAberto((v) => !v)}
         className="rounded-full px-2 py-0.5 text-xs font-medium"
@@ -445,33 +526,28 @@ function StatusPill({
         {status}
       </button>
       {aberto && (
-        <>
-          <div
-            className="absolute left-0 top-full z-50 mt-1 w-44 rounded-[var(--radius)] bg-overlay p-1"
-            style={{ boxShadow: "var(--shadow-pop)" }}
-          >
-            {config.statuses.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={async () => {
-                  setAberto(false);
-                  await moverDemanda(demandaId, `status:${s}`);
-                  router.refresh();
-                }}
-                className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left text-sm text-fg-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
-              >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: corDoStatus(config, s) }}
-                />
-                {s}
-              </button>
-            ))}
-          </div>
-        </>
+        <Popover ancora={ancora} aoFechar={fechar} largura={176}>
+          {config.statuses.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={async () => {
+                setAberto(false);
+                await moverDemanda(demandaId, `status:${s}`);
+                router.refresh();
+              }}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left text-sm text-fg-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: corDoStatus(config, s) }}
+              />
+              {s}
+            </button>
+          ))}
+        </Popover>
       )}
-    </div>
+    </>
   );
 }
 
@@ -633,22 +709,251 @@ function ModalNovoGrupo({
   );
 }
 
-/**
- * Fecha um menu suspenso ao clicar fora dele. (Overlay `fixed inset-0` não
- * serve aqui: dentro da `.rolagem-tabela`, que tem transform, ele ficaria
- * preso à área da tabela em vez de cobrir a tela.)
- */
-function useFecharAoClicarFora<T extends HTMLElement>(aberto: boolean, fechar: () => void) {
-  const ref = useRef<T>(null);
+/** Cabeçalho de uma coluna: clique abre o menu (renomear/tipo/opções/mover/ocultar/excluir). */
+function CabecalhoColuna({
+  coluna: c,
+  editor,
+  primeira,
+  ultima,
+}: {
+  coluna: ColunaDemanda;
+  editor: EditorColunas;
+  primeira: boolean;
+  ultima: boolean;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ancora = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
+  const [nome, setNome] = useState(c.nome);
+  const [opcoes, setOpcoes] = useState((c.opcoes ?? []).join(", "));
+
   useEffect(() => {
-    if (!aberto) return;
-    const fora = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) fechar();
-    };
-    document.addEventListener("mousedown", fora);
-    return () => document.removeEventListener("mousedown", fora);
-  }, [aberto, fechar]);
-  return ref;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNome(c.nome);
+    setOpcoes((c.opcoes ?? []).join(", "));
+  }, [c.nome, c.opcoes]);
+
+  function salvarNome() {
+    const n = nome.trim();
+    if (n && n !== c.nome) editor.alterar(c.id, { nome: n });
+    else setNome(c.nome);
+  }
+  function salvarOpcoes() {
+    const lista = [...new Set(opcoes.split(",").map((o) => o.trim()).filter(Boolean))];
+    if (lista.join("|") !== (c.opcoes ?? []).join("|")) editor.alterar(c.id, { opcoes: lista });
+  }
+
+  const tipoRotulo = c.sistema
+    ? null
+    : TIPOS_PERSONALIZADOS.find((t) => t.tipo === c.tipo)?.rotulo;
+
+  return (
+    <>
+      <button
+        ref={ancora}
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        title="Editar coluna"
+        className="group/col flex items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-1 py-0.5 text-left font-medium text-fg-tertiary transition-colors hover:bg-surface-hover hover:text-foreground"
+      >
+        {c.nome}
+        <ChevronDown className="h-3 w-3 opacity-0 transition-opacity group-hover/col:opacity-100" />
+      </button>
+
+      {aberto && (
+        <Popover ancora={ancora} aoFechar={fechar} largura={240}>
+          <div className="space-y-2 p-1">
+            <div className="space-y-1">
+              <label className="rotulo block text-[10px]">Nome</label>
+              <input
+                value={nome}
+                autoFocus
+                maxLength={40}
+                onChange={(e) => setNome(e.target.value)}
+                onBlur={salvarNome}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                }}
+                className="campo !py-1 text-sm"
+              />
+            </div>
+
+            {!c.sistema && (
+              <div className="space-y-1">
+                <label className="rotulo block text-[10px]">Tipo</label>
+                <select
+                  value={c.tipo}
+                  onChange={(e) => {
+                    const tipo = e.target.value as TipoColuna;
+                    editor.alterar(c.id, {
+                      tipo,
+                      ...(tipo === "selecao" && !c.opcoes ? { opcoes: [] } : {}),
+                    });
+                  }}
+                  className="campo !py-1 text-sm"
+                >
+                  {TIPOS_PERSONALIZADOS.map((t) => (
+                    <option key={t.tipo} value={t.tipo}>
+                      {t.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!c.sistema && c.tipo === "selecao" && (
+              <div className="space-y-1">
+                <label className="rotulo block text-[10px]">Opções (separadas por vírgula)</label>
+                <textarea
+                  value={opcoes}
+                  rows={2}
+                  onChange={(e) => setOpcoes(e.target.value)}
+                  onBlur={salvarOpcoes}
+                  placeholder="Instagram, TikTok, Site"
+                  className="campo !py-1 resize-y text-sm"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 border-t border-border pt-2">
+              <button
+                type="button"
+                disabled={primeira}
+                onClick={() => editor.mover(c.id, -1)}
+                title="Mover para a esquerda"
+                className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={ultima}
+                onClick={() => editor.mover(c.id, 1)}
+                title="Mover para a direita"
+                className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              {tipoRotulo && (
+                <span className="ml-1 text-[10px] text-fg-tertiary">{tipoRotulo}</span>
+              )}
+              <div className="ml-auto flex gap-1">
+                {!FIXAS.has(c.id) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAberto(false);
+                      editor.alterar(c.id, { ativo: false });
+                    }}
+                    title="Ocultar coluna (volta pelo +)"
+                    className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-foreground"
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {!c.sistema && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm(`Excluir a coluna "${c.nome}" deste quadro?`)) return;
+                      setAberto(false);
+                      editor.excluir(c.id);
+                    }}
+                    title="Excluir coluna"
+                    className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-danger"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
+/** "+" no fim do cabeçalho: cria coluna nova e reexibe as ocultas. */
+function BotaoNovaColuna({ editor }: { editor: EditorColunas }) {
+  const [aberto, setAberto] = useState(false);
+  const ancora = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState<TipoColuna>("texto");
+
+  return (
+    <>
+      <button
+        ref={ancora}
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        title="Nova coluna"
+        className="grid h-6 w-6 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary transition-colors hover:bg-surface-hover hover:text-foreground"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+
+      {aberto && (
+        <Popover ancora={ancora} aoFechar={fechar} largura={240}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!nome.trim()) return;
+              editor.adicionar(nome, tipo);
+              setNome("");
+              setTipo("texto");
+              setAberto(false);
+            }}
+            className="space-y-2 p-1"
+          >
+            <p className="text-xs font-medium text-foreground">Nova coluna</p>
+            <input
+              value={nome}
+              autoFocus
+              maxLength={40}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Nome (ex.: Cliente)"
+              className="campo !py-1 text-sm"
+            />
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoColuna)}
+              className="campo !py-1 text-sm"
+            >
+              {TIPOS_PERSONALIZADOS.map((t) => (
+                <option key={t.tipo} value={t.tipo}>
+                  {t.rotulo}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="btn btn-primary btn-sm w-full">
+              Adicionar coluna
+            </button>
+          </form>
+
+          {editor.ocultas.length > 0 && (
+            <div className="mt-1.5 border-t border-border p-1 pt-2">
+              <p className="mb-1 text-[10px] uppercase tracking-wide text-fg-tertiary">
+                Colunas ocultas
+              </p>
+              {editor.ocultas.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => editor.alterar(c.id, { ativo: true })}
+                  className="flex w-full items-center justify-between rounded-[var(--radius-sm)] px-2 py-1 text-left text-sm text-fg-secondary hover:bg-surface-hover hover:text-foreground"
+                >
+                  {c.nome}
+                  <span className="text-[10px] text-accent">mostrar</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Popover>
+      )}
+    </>
+  );
 }
 
 const FMT_NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
@@ -668,10 +973,12 @@ function exibirCampo(tipo: ColunaDemanda["tipo"], valor: string) {
 function CelulaCampo({
   demandaId,
   coluna,
+  editor,
   valor: valorInicial,
 }: {
   demandaId: string;
   coluna: ColunaDemanda;
+  editor: EditorColunas;
   valor: string;
 }) {
   const router = useRouter();
@@ -696,21 +1003,13 @@ function CelulaCampo({
   }
 
   if (coluna.tipo === "selecao") {
-    const opcoes = coluna.opcoes ?? [];
     return (
-      <select
-        value={valor}
-        onChange={(e) => salvar(e.target.value)}
-        className="max-w-[200px] cursor-pointer rounded-[var(--radius-sm)] bg-transparent py-0.5 text-sm text-fg-secondary outline-none hover:bg-surface-hover"
-      >
-        <option value="">—</option>
-        {opcoes.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-        {valor && !opcoes.includes(valor) && <option value={valor}>{valor}</option>}
-      </select>
+      <CelulaSelecao
+        valor={valor}
+        coluna={coluna}
+        editor={editor}
+        aoEscolher={(v) => salvar(v)}
+      />
     );
   }
 
@@ -754,9 +1053,113 @@ function CelulaCampo({
       type="button"
       onClick={() => setEditando(true)}
       title={valor || `Preencher ${coluna.nome}`}
-      className="line-clamp-1 max-w-[260px] cursor-text text-left"
+      className="line-clamp-1 min-w-[60px] max-w-[260px] cursor-text text-left"
     >
       {valor ? exibirCampo(coluna.tipo, valor) : <span className="text-fg-tertiary">—</span>}
     </button>
+  );
+}
+
+/** Seleção colorida (estilo Monday): escolhe, cria valor novo, troca a cor. */
+function CelulaSelecao({
+  valor,
+  coluna,
+  editor,
+  aoEscolher,
+}: {
+  valor: string;
+  coluna: ColunaDemanda;
+  editor: EditorColunas;
+  aoEscolher: (v: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ancora = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
+  const [novo, setNovo] = useState("");
+
+  const opcoes = coluna.opcoes ?? [];
+  const cor = (v: string) => coluna.cores?.[v] ?? corAuto(v);
+  const c = valor ? cor(valor) : null;
+
+  return (
+    <>
+      <button
+        ref={ancora}
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        title={valor || `Escolher ${coluna.nome}`}
+        className="min-w-[90px] max-w-[200px] truncate rounded-full px-2.5 py-0.5 text-center text-xs font-medium"
+        style={c ? { background: c, color: corTextoSobre(c) } : { color: "var(--foreground-tertiary)" }}
+      >
+        {valor || "—"}
+      </button>
+
+      {aberto && (
+        <Popover ancora={ancora} aoFechar={fechar} largura={224}>
+          <div className="flex flex-col gap-0.5">
+            {opcoes.map((o) => (
+              <div key={o} className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    aoEscolher(o);
+                    setAberto(false);
+                  }}
+                  className="flex-1 truncate rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs font-medium"
+                  style={{ background: cor(o), color: corTextoSobre(cor(o)) }}
+                >
+                  {o}
+                </button>
+                <input
+                  type="color"
+                  value={cor(o)}
+                  onChange={(e) =>
+                    editor.alterar(coluna.id, {
+                      cores: { ...(coluna.cores ?? {}), [o]: e.target.value },
+                    })
+                  }
+                  title="Cor deste valor"
+                  className="h-6 w-6 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                />
+              </div>
+            ))}
+            {opcoes.length === 0 && (
+              <p className="px-2 py-1 text-xs text-fg-tertiary">Nenhuma opção ainda.</p>
+            )}
+            {valor && (
+              <button
+                type="button"
+                onClick={() => {
+                  aoEscolher("");
+                  setAberto(false);
+                }}
+                className="rounded-[var(--radius-sm)] px-2 py-1 text-left text-xs text-fg-tertiary hover:bg-surface-hover"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const v = novo.trim();
+              if (!v) return;
+              if (!opcoes.includes(v)) editor.alterar(coluna.id, { opcoes: [...opcoes, v] });
+              aoEscolher(v);
+              setNovo("");
+              setAberto(false);
+            }}
+            className="mt-1.5 border-t border-border pt-1.5"
+          >
+            <input
+              value={novo}
+              onChange={(e) => setNovo(e.target.value)}
+              placeholder="Nova opção + Enter"
+              className="w-full rounded-[var(--radius-sm)] bg-surface-hover px-2 py-1 text-xs outline-none"
+            />
+          </form>
+        </Popover>
+      )}
+    </>
   );
 }

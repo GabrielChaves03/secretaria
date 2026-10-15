@@ -9,7 +9,8 @@ import { obterDemanda } from "@/lib/demandas-consultas";
 import { listarComentarios } from "@/lib/comentarios-consultas";
 import { listarMembros } from "@/lib/escritorios-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
-import { colunasPersonalizadas } from "@/lib/demandas-config";
+import { colunasPersonalizadas, configDoQuadro } from "@/lib/demandas-config";
+import { obterQuadro } from "@/lib/operacoes-consultas";
 
 export const metadata = { title: "Editar demanda" };
 
@@ -24,11 +25,16 @@ export default async function PaginaEditarDemanda({
   const demanda = await obterDemanda(id);
   if (!demanda) notFound();
 
-  const [comentarios, membros, config] = await Promise.all([
+  const [comentarios, membros, config, quadro] = await Promise.all([
     listarComentarios(demanda.id),
     perfil.papel === "chefe" ? listarMembros() : Promise.resolve(undefined),
     obterConfigDemandas(),
+    demanda.quadro_id ? obterQuadro(demanda.quadro_id) : Promise.resolve(null),
   ]);
+  // Colunas personalizadas são do quadro da demanda (cada quadro tem as suas).
+  const colunasExtras = quadro
+    ? colunasPersonalizadas(configDoQuadro(config, quadro.colunas_demandas)).filter((c) => c.ativo)
+    : [];
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-8 md:px-10">
@@ -51,7 +57,7 @@ export default async function PaginaEditarDemanda({
           membros={membros}
           usuarioId={perfil.id}
           statuses={config.statuses}
-          colunasExtras={colunasPersonalizadas(config)}
+          colunasExtras={colunasExtras}
         />
       </div>
 
