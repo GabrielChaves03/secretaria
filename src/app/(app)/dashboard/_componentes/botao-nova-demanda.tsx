@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { criarDemanda } from "@/app/(app)/dashboard/actions";
-import { FormularioDemanda } from "@/app/(app)/dashboard/_componentes/formulario-demanda";
+import {
+  FormularioDemanda,
+  type OpcaoQuadro,
+} from "@/app/(app)/dashboard/_componentes/formulario-demanda";
+import type { ColunaDemanda } from "@/lib/demandas-config";
 import { Modal } from "@/app/(app)/dashboard/_componentes/modal";
 import type { Membro } from "@/lib/escritorios";
 
@@ -14,6 +18,8 @@ export function BotaoNovaDemanda({
   responsavelPadrao,
   quadroId,
   statuses,
+  colunasExtras,
+  quadros,
 }: {
   /** Só para o chefe — habilita o seletor de responsável. */
   membros?: Pick<Membro, "id" | "nome">[];
@@ -24,6 +30,10 @@ export function BotaoNovaDemanda({
   quadroId?: string;
   /** Status configurados (para o seletor de status). */
   statuses?: string[];
+  /** Colunas personalizadas do quadro (quando `quadroId`). */
+  colunasExtras?: ColunaDemanda[];
+  /** Sem `quadroId`: quadros para escolher onde criar. */
+  quadros?: OpcaoQuadro[];
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -49,6 +59,8 @@ export function BotaoNovaDemanda({
             responsavelPadrao={responsavelPadrao}
             quadroId={quadroId}
             statuses={statuses}
+            colunasExtras={colunasExtras}
+            quadros={quadros}
             aoConcluir={() => {
               setAberto(false);
               router.refresh();

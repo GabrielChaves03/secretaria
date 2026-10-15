@@ -11,6 +11,7 @@ import {
 import { obterOperacao, obterQuadro } from "@/lib/operacoes-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 import { configDoQuadro } from "@/lib/demandas-config";
+import { BotaoNovaDemanda } from "@/app/(app)/dashboard/_componentes/botao-nova-demanda";
 import { hojeISO } from "@/lib/demandas";
 
 export const metadata = { title: "Quadro" };
@@ -34,6 +35,7 @@ export default async function PaginaQuadro({
     ehChefe ? listarMembros() : Promise.resolve(undefined),
     obterConfigDemandas(),
   ]);
+  const configQuadro = configDoQuadro(config, quadro.colunas_demandas);
   const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
   );
@@ -42,29 +44,39 @@ export default async function PaginaQuadro({
 
   return (
     <main className="flex w-full flex-1 flex-col px-4 py-6 md:px-6">
-      <header>
-        <div className="flex items-center gap-1.5 text-sm text-fg-tertiary">
-          {operacao && (
-            <>
-              <span
-                className="h-2.5 w-2.5 rounded-[3px]"
-                style={{ background: operacao.cor }}
-              />
-              <span>{operacao.nome}</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </>
-          )}
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-1.5 text-sm text-fg-tertiary">
+            {operacao && (
+              <>
+                <span
+                  className="h-2.5 w-2.5 rounded-[3px]"
+                  style={{ background: operacao.cor }}
+                />
+                <span>{operacao.nome}</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </>
+            )}
+          </div>
+          <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <span className="h-3 w-3 rounded-full" style={{ background: quadro.cor }} />
+            {quadro.nome}
+          </h1>
         </div>
-        <h1 className="mt-0.5 flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <span className="h-3 w-3 rounded-full" style={{ background: quadro.cor }} />
-          {quadro.nome}
-        </h1>
+        <BotaoNovaDemanda
+          usuarioId={perfil.id}
+          membros={membros}
+          responsavelPadrao={membros?.find((m) => m.papel === "funcionario")?.id}
+          quadroId={quadro.id}
+          statuses={config.statuses}
+          colunasExtras={configQuadro.colunas.filter((c) => !c.sistema && c.ativo)}
+        />
       </header>
 
       <VisaoQuadro
         quadroId={quadro.id}
         demandas={demandas}
-        config={configDoQuadro(config, quadro.colunas_demandas)}
+        config={configQuadro}
         grupos={{
           ordem: quadro.grupos_ordem ?? [],
           cores: quadro.grupos_cores ?? {},

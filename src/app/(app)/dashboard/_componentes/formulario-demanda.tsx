@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DIFICULDADES, PRIORIDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
 import type { EstadoDemanda } from "@/app/(app)/dashboard/actions";
@@ -37,8 +37,20 @@ type Props = {
   statuses?: string[];
   /** Grupo (seção do quadro) onde criar — vai num input oculto. */
   grupo?: string;
-  /** Colunas personalizadas do escritório (inputs `campo:<id>`). */
+  /** Colunas personalizadas do quadro (inputs `campo:<id>`). */
   colunasExtras?: ColunaDemanda[];
+  /**
+   * Fora de um quadro (ex.: Meu Trabalho): lista de quadros para escolher
+   * onde criar — cada um com as próprias colunas personalizadas.
+   */
+  quadros?: OpcaoQuadro[];
+};
+
+export type OpcaoQuadro = {
+  id: string;
+  nome: string;
+  operacao: string;
+  colunasExtras: ColunaDemanda[];
 };
 
 export function FormularioDemanda({
@@ -52,8 +64,13 @@ export function FormularioDemanda({
   quadroId,
   statuses,
   grupo,
-  colunasExtras,
+  colunasExtras: extrasFixas,
+  quadros,
 }: Props) {
+  const [quadroEscolhido, setQuadroEscolhido] = useState(quadros?.[0]?.id ?? "");
+  const colunasExtras = quadros
+    ? quadros.find((q) => q.id === quadroEscolhido)?.colunasExtras
+    : extrasFixas;
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
     acao,
@@ -73,6 +90,34 @@ export function FormularioDemanda({
       {demanda && <input type="hidden" name="id" value={demanda.id} />}
       {quadroId && <input type="hidden" name="quadro_id" value={quadroId} />}
       {grupo && <input type="hidden" name="grupo" value={grupo} />}
+
+      {quadros && !quadroId && (
+        <div className="space-y-1.5">
+          <label htmlFor="quadro_id" className="rotulo block">
+            Quadro
+          </label>
+          {quadros.length === 0 ? (
+            <p className="text-sm text-fg-tertiary">
+              Nenhum quadro de tarefas ainda — o chefe cria um no menu lateral.
+            </p>
+          ) : (
+            <select
+              id="quadro_id"
+              name="quadro_id"
+              required
+              value={quadroEscolhido}
+              onChange={(e) => setQuadroEscolhido(e.target.value)}
+              className="campo"
+            >
+              {quadros.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.operacao} › {q.nome}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label htmlFor="titulo" className="rotulo block">

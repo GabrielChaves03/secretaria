@@ -91,3 +91,22 @@ export async function obterOperacao(id: string): Promise<Operacao | null> {
     .maybeSingle();
   return (data as Operacao | null) ?? null;
 }
+
+/**
+ * Quadros de TAREFAS do escritório (topo e aninhados), com o nome da operação —
+ * para escolher onde criar uma demanda fora de um quadro (Meu Trabalho).
+ */
+export async function listarQuadrosDeTarefas(): Promise<
+  (Quadro & { operacao_nome: string })[]
+> {
+  const ops = await listarOperacoesComQuadros();
+  const lista: (Quadro & { operacao_nome: string })[] = [];
+  for (const o of ops) {
+    for (const q of o.quadros) {
+      for (const x of [q, ...q.filhos]) {
+        if (x.tipo === "tarefas") lista.push({ ...x, operacao_nome: o.nome });
+      }
+    }
+  }
+  return lista;
+}

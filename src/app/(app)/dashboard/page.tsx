@@ -9,12 +9,17 @@ import {
 } from "@/lib/comentarios-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
 import { construirQuadro } from "@/lib/quadro-colunas";
+import { BotaoNovaDemanda } from "@/app/(app)/dashboard/_componentes/botao-nova-demanda";
+import { listarQuadrosDeTarefas } from "@/lib/operacoes-consultas";
+import { listarMembros } from "@/lib/escritorios-consultas";
+import { colunasDoQuadro } from "@/lib/demandas-config";
 
 export const metadata = { title: "Meu Trabalho" };
 
 /**
  * "Meu Trabalho": as demandas do usuário logado, de todos os quadros, num
- * board por status. Criar demanda acontece dentro de um quadro (não aqui).
+ * board por status. "Nova demanda" aqui pede o quadro onde criar (toda
+ * demanda mora num quadro).
  */
 export default async function PaginaDashboard({
   searchParams,
@@ -25,10 +30,20 @@ export default async function PaginaDashboard({
   const { q: qBruto } = await searchParams;
   const busca = qBruto?.trim() || undefined;
 
-  const [demandas, config] = await Promise.all([
+  const [demandas, config, quadros, membros] = await Promise.all([
     listarDemandas(undefined, busca, perfil.id),
     obterConfigDemandas(),
+    listarQuadrosDeTarefas(),
+    perfil.papel === "chefe" ? listarMembros() : Promise.resolve(undefined),
   ]);
+  const opcoesQuadro = quadros.map((q) => ({
+    id: q.id,
+    nome: q.nome,
+    operacao: q.operacao_nome,
+    colunasExtras: colunasDoQuadro(config, q.colunas_demandas).filter(
+      (c) => !c.sistema && c.ativo,
+    ),
+  }));
   const comentariosMapa = await listarComentariosPorDemanda(
     demandas.map((d) => d.id),
   );
@@ -46,6 +61,12 @@ export default async function PaginaDashboard({
             Suas demandas, em todos os quadros.
           </p>
         </div>
+        <BotaoNovaDemanda
+          usuarioId={perfil.id}
+          membros={membros}
+          statuses={config.statuses}
+          quadros={opcoesQuadro}
+        />
       </header>
 
       {busca && (
