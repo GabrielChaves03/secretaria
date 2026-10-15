@@ -415,3 +415,11 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   `demandas.campos[id]`; célula edita inline via `salvarCampoDemanda()` (sem aviso WhatsApp). Excluir
   coluna só some da tela — os valores ficam em `campos`. Menus dentro da tabela usam `<Popover>`
   (`_componentes/popover.tsx`, portal no body). Ajustes não mexe mais em colunas (só status).
+
+## Métricas (Fase C, 15/10)
+
+`/metricas` (`src/app/(app)/metricas/page.tsx`, item "Métricas" na barra lateral): KPIs (total, em aberto,
+concluídas, atrasadas, vencem em 7 dias) + **Por operação** (cada quadro de tarefas com barra empilhada nas
+cores dos status) + **Por colaborador** + **Prazos da semana** (atrasadas / hoje / próximos 7 dias).
+Chefe vê o escritório; funcionário vê só os próprios números (RLS + filtro `donoId`). Sem data de
+conclusão no banco — métricas de evolução no tempo ficaram de fora de propósito (usuário não pediu).

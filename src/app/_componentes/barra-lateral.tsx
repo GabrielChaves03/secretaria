@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { OperacoesNav } from "@/app/(app)/_componentes/operacoes-nav";
 import type { OperacaoComQuadros } from "@/lib/operacoes";
 import {
+  BarChart3,
   CalendarDays,
   ChevronDown,
   ListTodo,
@@ -53,6 +54,12 @@ const OUTROS: ItemNav[] = [
     rotulo: "Calendário",
     Icone: CalendarDays,
     ativo: (c) => c.startsWith("/calendario"),
+  },
+  {
+    href: "/metricas",
+    rotulo: "Métricas",
+    Icone: BarChart3,
+    ativo: (c) => c.startsWith("/metricas"),
   },
 ];
 
