@@ -5,6 +5,7 @@ import { FormularioDemanda } from "@/app/(app)/dashboard/_componentes/formulario
 import { requererEscritorio } from "@/lib/perfil-consultas";
 import { listarMembros } from "@/lib/escritorios-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
+import { colunasPersonalizadas } from "@/lib/demandas-config";
 
 export const metadata = { title: "Nova demanda" };
 
@@ -35,6 +36,7 @@ export default async function PaginaNovaDemanda() {
           membros={membros}
           usuarioId={perfil.id}
           statuses={config.statuses}
+          colunasExtras={colunasPersonalizadas(config)}
         />
       </div>
     </main>

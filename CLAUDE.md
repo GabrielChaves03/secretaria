@@ -399,3 +399,15 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
 - Drag-and-drop das listas é HTML5 nativo → não funciona por toque no celular; nesse caso usar o seletor
   "Mover para" no card.
 - Melhorias de UI/UX (a base é funcional, sem capricho visual).
+
+## Tabelas largas e colunas personalizadas (15/10)
+
+- **Rolagem lateral de tabela:** sempre `<TabelaRolavel>` (`dashboard/_componentes/tabela-rolavel.tsx`,
+  barra extra no topo sincronizada) ou a classe `.rolagem-tabela` (globals.css). Sem isso a tabela
+  "rasga" ao rolar (fundo `fixed` + grão com blend). Dentro dela **não** usar overlay `fixed inset-0`
+  pra fechar menu (o transform prende o fixed à tabela) — usar listener de `mousedown` fora.
+- **Colunas personalizadas das demandas:** definidas pelo chefe em Ajustes → (config de demandas),
+  guardadas em `escritorio_demandas_config.colunas` (`sistema: false`, id `c_xxxxxxxx`, tipos
+  texto/numero/data/link/selecao + `opcoes`). Valor em `demandas.campos[id]` (jsonb). Form usa
+  inputs `campo:<id>`; célula da Tabela edita inline via `salvarCampoDemanda()` (sem aviso WhatsApp).
+  Remover coluna só some da tela — os valores ficam em `campos`.

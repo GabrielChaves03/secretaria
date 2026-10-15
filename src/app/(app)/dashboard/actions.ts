@@ -24,7 +24,26 @@ function lerCampos(formData: FormData) {
     status: String(formData.get("status") ?? "").trim(),
     prioridade: String(formData.get("prioridade") ?? "").trim(),
     link: String(formData.get("link") ?? "").trim(),
+    /** Colunas personalizadas: inputs `campo:<id>` (só as que vieram no form). */
+    campos: lerCamposPersonalizados(formData),
   };
+}
+
+function lerCamposPersonalizados(formData: FormData): Record<string, string> {
+  const campos: Record<string, string> = {};
+  for (const [chave, valor] of formData.entries()) {
+    if (!chave.startsWith("campo:")) continue;
+    const id = chave.slice("campo:".length);
+    if (id) campos[id] = String(valor).trim().slice(0, 2000);
+  }
+  return campos;
+}
+
+/** Junta campos novos aos existentes, descartando os vazios. */
+function mesclarCampos(antes: Record<string, string>, novos: Record<string, string>) {
+  const r: Record<string, string> = { ...antes, ...novos };
+  for (const k of Object.keys(r)) if (!r[k]) delete r[k];
+  return r;
 }
 
 /** Corpo do aviso de WhatsApp de demanda atribuída. */
@@ -58,6 +77,7 @@ export async function criarDemanda(
     status,
     prioridade,
     link,
+    campos,
   } = lerCampos(formData);
 
   if (!titulo) return { erro: "Informe o título." };
@@ -79,6 +99,7 @@ export async function criarDemanda(
       status: status || "A fazer",
       prioridade: prioridade || null,
       link: link || null,
+      campos: mesclarCampos({}, campos),
     })
     .select("id")
     .single();
@@ -108,8 +129,17 @@ export async function atualizarDemanda(
 ): Promise<EstadoDemanda> {
   const usuario = await requererUsuario();
   const id = String(formData.get("id") ?? "");
-  const { titulo, descricao, dataEntrega, dificuldade, responsavelId, status, prioridade, link } =
-    lerCampos(formData);
+  const {
+    titulo,
+    descricao,
+    dataEntrega,
+    dificuldade,
+    responsavelId,
+    status,
+    prioridade,
+    link,
+    campos,
+  } = lerCampos(formData);
 
   if (!id) return { erro: "Demanda não identificada." };
   if (!titulo) return { erro: "Informe o título." };
@@ -119,7 +149,7 @@ export async function atualizarDemanda(
 
   const { data: antes } = await supabase
     .from("demandas")
-    .select("usuario_id, status")
+    .select("usuario_id, status, campos")
     .eq("id", id)
     .maybeSingle();
   const donoAnterior = antes?.usuario_id as string | undefined;
@@ -134,6 +164,14 @@ export async function atualizarDemanda(
       dificuldade,
       prioridade: prioridade || null,
       link: link || null,
+      ...(Object.keys(campos).length > 0
+        ? {
+            campos: mesclarCampos(
+              (antes?.campos as Record<string, string> | null) ?? {},
+              campos,
+            ),
+          }
+        : {}),
       ...(status ? { status } : {}),
       ...(responsavelId ? { usuario_id: responsavelId } : {}),
     })
@@ -281,6 +319,33 @@ export async function moverDemanda(id: string, destino: string) {
   }
 
   revalidatePath("/dashboard", "layout");
+}
+
+/**
+ * Grava o valor de UMA coluna personalizada (edição direto na célula da
+ * Tabela). Dono ou chefe — a RLS decide. Sem aviso de WhatsApp: é edição
+ * miúda, avisar a cada célula viraria spam.
+ */
+export async function salvarCampoDemanda(id: string, colunaId: string, valor: string) {
+  await requererUsuario();
+  if (!id || !colunaId) return { erro: "Campo inválido." };
+
+  const supabase = await criarClienteServidor();
+  const { data: antes } = await supabase
+    .from("demandas")
+    .select("campos")
+    .eq("id", id)
+    .maybeSingle();
+  if (!antes) return { erro: "Demanda não encontrada." };
+
+  const campos = mesclarCampos((antes.campos as Record<string, string> | null) ?? {}, {
+    [colunaId]: valor.trim().slice(0, 2000),
+  });
+  const { error } = await supabase.from("demandas").update({ campos }).eq("id", id);
+  if (error) return { erro: error.message };
+
+  revalidatePath("/dashboard", "layout");
+  return { ok: true };
 }
 
 /**

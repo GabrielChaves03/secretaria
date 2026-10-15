@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DIFICULDADES, PRIORIDADES, ROTULO_DIFICULDADE, type Demanda } from "@/lib/demandas";
 import type { EstadoDemanda } from "@/app/(app)/dashboard/actions";
 import type { Membro } from "@/lib/escritorios";
+import type { ColunaDemanda } from "@/lib/demandas-config";
 
 type Props = {
   acao: (
@@ -36,6 +37,8 @@ type Props = {
   statuses?: string[];
   /** Grupo (seção do quadro) onde criar — vai num input oculto. */
   grupo?: string;
+  /** Colunas personalizadas do escritório (inputs `campo:<id>`). */
+  colunasExtras?: ColunaDemanda[];
 };
 
 export function FormularioDemanda({
@@ -49,6 +52,7 @@ export function FormularioDemanda({
   quadroId,
   statuses,
   grupo,
+  colunasExtras,
 }: Props) {
   const router = useRouter();
   const [estado, acaoForm, pendente] = useActionState<EstadoDemanda, FormData>(
@@ -186,6 +190,48 @@ export function FormularioDemanda({
         />
       </div>
 
+      {colunasExtras && colunasExtras.length > 0 && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {colunasExtras.map((c) => (
+            <div key={c.id} className="space-y-1.5">
+              <label htmlFor={`campo-${c.id}`} className="rotulo block">
+                {c.nome}
+              </label>
+              {c.tipo === "selecao" ? (
+                <select
+                  id={`campo-${c.id}`}
+                  name={`campo:${c.id}`}
+                  defaultValue={demanda?.campos?.[c.id] ?? ""}
+                  className="campo"
+                >
+                  <option value="">—</option>
+                  {(c.opcoes ?? []).map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                  {/* valor antigo que saiu da lista de opções continua visível */}
+                  {demanda?.campos?.[c.id] &&
+                    !(c.opcoes ?? []).includes(demanda.campos[c.id]) && (
+                      <option value={demanda.campos[c.id]}>{demanda.campos[c.id]}</option>
+                    )}
+                </select>
+              ) : (
+                <input
+                  id={`campo-${c.id}`}
+                  name={`campo:${c.id}`}
+                  type={tipoInput(c.tipo)}
+                  step={c.tipo === "numero" ? "any" : undefined}
+                  defaultValue={demanda?.campos?.[c.id] ?? ""}
+                  placeholder={c.tipo === "link" ? "https://..." : undefined}
+                  className="campo"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {membros && membros.length > 1 && (
         <div className="space-y-1.5">
           <label htmlFor="responsavel_id" className="rotulo block">
@@ -234,4 +280,12 @@ export function FormularioDemanda({
       </div>
     </form>
   );
+}
+
+/** Tipo do <input> HTML para uma coluna personalizada. */
+export function tipoInput(tipo: ColunaDemanda["tipo"]) {
+  if (tipo === "numero") return "number";
+  if (tipo === "data") return "date";
+  if (tipo === "link") return "url";
+  return "text";
 }

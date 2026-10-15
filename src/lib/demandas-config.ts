@@ -3,7 +3,15 @@
  * Vinda da fusão com o Avant — espelha o `config` global dele, por escritório.
  */
 
-export type TipoColuna = "pessoa" | "status" | "data" | "prioridade" | "texto" | "link";
+export type TipoColuna =
+  | "pessoa"
+  | "status"
+  | "data"
+  | "prioridade"
+  | "texto"
+  | "link"
+  | "numero"
+  | "selecao";
 
 export type ColunaDemanda = {
   id: string;
@@ -11,7 +19,23 @@ export type ColunaDemanda = {
   tipo: TipoColuna;
   ativo: boolean;
   sistema: boolean;
+  /** Só colunas personalizadas do tipo "selecao": valores possíveis. */
+  opcoes?: string[];
 };
+
+/** Tipos que o chefe pode escolher ao criar uma coluna personalizada. */
+export const TIPOS_PERSONALIZADOS: { tipo: TipoColuna; rotulo: string }[] = [
+  { tipo: "texto", rotulo: "Texto" },
+  { tipo: "numero", rotulo: "Número" },
+  { tipo: "data", rotulo: "Data" },
+  { tipo: "link", rotulo: "Link" },
+  { tipo: "selecao", rotulo: "Seleção" },
+];
+
+/** Colunas criadas pelo escritório (valor guardado em `demandas.campos[id]`). */
+export function colunasPersonalizadas(cfg: ConfigDemandas): ColunaDemanda[] {
+  return cfg.colunas.filter((c) => !c.sistema);
+}
 
 export type ConfigDemandas = {
   statuses: string[];

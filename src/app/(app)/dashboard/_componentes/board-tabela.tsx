@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -10,8 +10,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { Modal } from "@/app/(app)/dashboard/_componentes/modal";
-import { FormularioDemanda } from "@/app/(app)/dashboard/_componentes/formulario-demanda";
-import { atualizarDemanda, criarDemanda, moverDemanda } from "@/app/(app)/dashboard/actions";
+import {
+  FormularioDemanda,
+  tipoInput,
+} from "@/app/(app)/dashboard/_componentes/formulario-demanda";
+import {
+  atualizarDemanda,
+  criarDemanda,
+  moverDemanda,
+  salvarCampoDemanda,
+} from "@/app/(app)/dashboard/actions";
 import {
   adicionarGrupo,
   apagarGrupo,
@@ -26,6 +34,7 @@ import {
   type DemandaComDono,
 } from "@/lib/demandas";
 import {
+  colunasPersonalizadas,
   corDoStatus,
   type ColunaDemanda,
   type ConfigDemandas,
@@ -132,6 +141,7 @@ export function BoardTabela({
             quadroId={quadroId}
             grupo={modal.grupo}
             statuses={config.statuses}
+            colunasExtras={colunasPersonalizadas(config)}
             aoConcluir={() => {
               setModal(null);
               router.refresh();
@@ -149,6 +159,7 @@ export function BoardTabela({
             membros={membros}
             usuarioId={usuarioId}
             statuses={config.statuses}
+            colunasExtras={colunasPersonalizadas(config)}
             aoConcluir={() => {
               setModal(null);
               router.refresh();
@@ -391,7 +402,7 @@ function LinhaTarefa({
               "—"
             )
           ) : (
-            <span>{d.campos?.[c.id] || "—"}</span>
+            <CelulaCampo demandaId={d.id} coluna={c} valor={d.campos?.[c.id] ?? ""} />
           )}
         </td>
       ))}
@@ -420,10 +431,11 @@ function StatusPill({
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
+  const ref = useFecharAoClicarFora<HTMLDivElement>(aberto, () => setAberto(false));
   const cor = corDoStatus(config, status);
 
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
@@ -434,7 +446,6 @@ function StatusPill({
       </button>
       {aberto && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
           <div
             className="absolute left-0 top-full z-50 mt-1 w-44 rounded-[var(--radius)] bg-overlay p-1"
             style={{ boxShadow: "var(--shadow-pop)" }}
@@ -619,5 +630,133 @@ function ModalNovoGrupo({
         </div>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * Fecha um menu suspenso ao clicar fora dele. (Overlay `fixed inset-0` não
+ * serve aqui: dentro da `.rolagem-tabela`, que tem transform, ele ficaria
+ * preso à área da tabela em vez de cobrir a tela.)
+ */
+function useFecharAoClicarFora<T extends HTMLElement>(aberto: boolean, fechar: () => void) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) fechar();
+    };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [aberto, fechar]);
+  return ref;
+}
+
+const FMT_NUMERO = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+
+/** Valor de uma coluna personalizada formatado para exibir na célula. */
+function exibirCampo(tipo: ColunaDemanda["tipo"], valor: string) {
+  if (tipo === "data" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return FMT_DATA.format(new Date(`${valor}T00:00:00`));
+  }
+  if (tipo === "numero" && valor !== "" && !Number.isNaN(Number(valor))) {
+    return FMT_NUMERO.format(Number(valor));
+  }
+  return valor;
+}
+
+/** Célula de coluna personalizada: clica, edita, sai (blur/Enter) e salva. */
+function CelulaCampo({
+  demandaId,
+  coluna,
+  valor: valorInicial,
+}: {
+  demandaId: string;
+  coluna: ColunaDemanda;
+  valor: string;
+}) {
+  const router = useRouter();
+  const [valor, setValor] = useState(valorInicial);
+  const [editando, setEditando] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValor(valorInicial);
+  }, [valorInicial]);
+
+  async function salvar(novo: string) {
+    setEditando(false);
+    if (novo.trim() === valorInicial) return;
+    setValor(novo.trim());
+    const r = await salvarCampoDemanda(demandaId, coluna.id, novo);
+    if (r && "erro" in r) {
+      alert(r.erro);
+      setValor(valorInicial);
+    }
+    router.refresh();
+  }
+
+  if (coluna.tipo === "selecao") {
+    const opcoes = coluna.opcoes ?? [];
+    return (
+      <select
+        value={valor}
+        onChange={(e) => salvar(e.target.value)}
+        className="max-w-[200px] cursor-pointer rounded-[var(--radius-sm)] bg-transparent py-0.5 text-sm text-fg-secondary outline-none hover:bg-surface-hover"
+      >
+        <option value="">—</option>
+        {opcoes.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        {valor && !opcoes.includes(valor) && <option value={valor}>{valor}</option>}
+      </select>
+    );
+  }
+
+  if (editando) {
+    return (
+      <input
+        autoFocus
+        type={tipoInput(coluna.tipo)}
+        step={coluna.tipo === "numero" ? "any" : undefined}
+        defaultValue={valor}
+        onBlur={(e) => salvar(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") setEditando(false);
+        }}
+        className="w-full min-w-[140px] rounded-[var(--radius-sm)] bg-surface-hover px-2 py-0.5 text-sm outline-none"
+      />
+    );
+  }
+
+  if (coluna.tipo === "link" && valor) {
+    return (
+      <span className="flex items-center gap-2">
+        <a href={valor} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+          abrir
+        </a>
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          aria-label={`Editar ${coluna.nome}`}
+          className="text-fg-tertiary opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditando(true)}
+      title={valor || `Preencher ${coluna.nome}`}
+      className="line-clamp-1 max-w-[260px] cursor-text text-left"
+    >
+      {valor ? exibirCampo(coluna.tipo, valor) : <span className="text-fg-tertiary">—</span>}
+    </button>
   );
 }

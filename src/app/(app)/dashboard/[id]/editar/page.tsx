@@ -9,6 +9,7 @@ import { obterDemanda } from "@/lib/demandas-consultas";
 import { listarComentarios } from "@/lib/comentarios-consultas";
 import { listarMembros } from "@/lib/escritorios-consultas";
 import { obterConfigDemandas } from "@/lib/demandas-config-consultas";
+import { colunasPersonalizadas } from "@/lib/demandas-config";
 
 export const metadata = { title: "Editar demanda" };
 
@@ -50,6 +51,7 @@ export default async function PaginaEditarDemanda({
           membros={membros}
           usuarioId={perfil.id}
           statuses={config.statuses}
+          colunasExtras={colunasPersonalizadas(config)}
         />
       </div>
 
