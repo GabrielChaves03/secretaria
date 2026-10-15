@@ -407,8 +407,8 @@ O site da Netlify foi **apagado em 25/09** (e o `netlify.toml` removido do repo)
   "rasga" ao rolar (fundo `fixed` + grão com blend). Dentro dela **não** usar overlay `fixed inset-0`
   pra fechar menu (o transform prende o fixed à tabela) — usar listener de `mousedown` fora.
 - **Colunas das demandas são POR QUADRO** (migration 0023): `quadros.colunas_demandas` jsonb = lista
-  completa e ordenada (sistema: responsavel/status/prazo/prioridade/notas/link — renomeáveis/ocultáveis,
-  responsavel+status nunca somem; personalizadas: id `c_xxxxxxxx`, tipos texto/numero/data/link/selecao
+  completa e ordenada (sistema: responsavel/status/prazo/prioridade/notas/link — renomeáveis e EXCLUÍVEIS (inclusive
+  responsavel/status; voltam pelo "+" → "Recolocar coluna"); personalizadas: id `c_xxxxxxxx`, tipos texto/numero/data/link/selecao
   + `opcoes` + `cores`). NULL = padrão (`colunasDoQuadro`/`configDoQuadro` em `lib/demandas-config.ts`).
   Editadas direto no cabeçalho da visão Tabela (`board-tabela.tsx`: CabecalhoColuna / BotaoNovaColuna)
   por QUALQUER membro, via RPC `salvar_colunas_quadro` (`quadro-colunas-actions.ts`). Valores em

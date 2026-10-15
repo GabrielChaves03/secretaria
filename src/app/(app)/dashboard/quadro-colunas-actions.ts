@@ -37,8 +37,7 @@ export async function salvarColunasQuadro(quadroId: string, colunas: ColunaDeman
       id: c.id,
       nome,
       tipo: c.tipo,
-      // Responsável e Status nunca somem (o quadro depende deles).
-      ativo: c.id === "responsavel" || c.id === "status" ? true : c.ativo !== false,
+      ativo: c.ativo !== false,
       sistema: ehSistema,
       ...(opcoes ? { opcoes } : {}),
       ...(c.cores && Object.keys(c.cores).length > 0 ? { cores: c.cores } : {}),

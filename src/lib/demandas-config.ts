@@ -42,6 +42,11 @@ export function colunasPersonalizadas(cfg: ConfigDemandas): ColunaDemanda[] {
 /** Ids das colunas de sistema — fixas no código, não podem ser excluídas. */
 export const IDS_SISTEMA = CONFIG_PADRAO_COLUNAS().map((c) => c.id);
 
+/** Colunas padrão (para recolocar uma que o quadro excluiu). */
+export function COLUNAS_PADRAO(): ColunaDemanda[] {
+  return CONFIG_PADRAO_COLUNAS();
+}
+
 function CONFIG_PADRAO_COLUNAS(): ColunaDemanda[] {
   return [
     { id: "responsavel", nome: "Responsável", tipo: "pessoa", ativo: true, sistema: true },
@@ -55,16 +60,15 @@ function CONFIG_PADRAO_COLUNAS(): ColunaDemanda[] {
 
 /**
  * Colunas de UM quadro: as que ele salvou (`quadros.colunas_demandas`) ou, se
- * ainda não foi personalizado, as de sistema do escritório. Garante que toda
- * coluna de sistema existe (uma que faltar volta no fim, visível).
+ * ainda não foi personalizado, as de sistema do escritório. O quadro pode
+ * excluir qualquer coluna, inclusive as padrão (o dado continua na demanda;
+ * a coluna padrão volta pelo "+" da tabela).
  */
 export function colunasDoQuadro(cfg: ConfigDemandas, salvas: unknown): ColunaDemanda[] {
-  const base = Array.isArray(salvas)
-    ? (salvas as ColunaDemanda[]).filter((c) => c && typeof c.id === "string")
-    : cfg.colunas.filter((c) => c.sistema);
-  const ids = new Set(base.map((c) => c.id));
-  const faltando = CONFIG_PADRAO_COLUNAS().filter((c) => !ids.has(c.id));
-  return [...base, ...faltando];
+  if (Array.isArray(salvas)) {
+    return (salvas as ColunaDemanda[]).filter((c) => c && typeof c.id === "string");
+  }
+  return cfg.colunas.filter((c) => c.sistema);
 }
 
 /** Config do escritório com as colunas trocadas pelas do quadro. */

@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  EyeOff,
   MoreVertical,
   Pencil,
   Plus,
@@ -40,6 +39,7 @@ import {
   type DemandaComDono,
 } from "@/lib/demandas";
 import {
+  COLUNAS_PADRAO,
   corDoStatus,
   TIPOS_PERSONALIZADOS,
   type ColunaDemanda,
@@ -50,9 +50,6 @@ import { CORES_OPERACAO } from "@/lib/operacoes";
 import type { Membro } from "@/lib/escritorios";
 
 const FMT_DATA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
-
-/** Colunas que o quadro não pode esconder (o board depende delas). */
-const FIXAS = new Set(["responsavel", "status"]);
 
 type Props = {
   quadroId: string;
@@ -72,7 +69,10 @@ type EditorColunas = {
   mover: (id: string, dir: -1 | 1) => void;
   excluir: (id: string) => void;
   adicionar: (nome: string, tipo: TipoColuna) => void;
-  ocultas: ColunaDemanda[];
+  /** Recoloca uma coluna padrão excluída (ou reexibe uma oculta). */
+  restaurar: (c: ColunaDemanda) => void;
+  /** Padrão excluídas + ocultas (versões antigas) — oferecidas no "+". */
+  recolocaveis: ColunaDemanda[];
 };
 
 export function BoardTabela({
@@ -111,7 +111,10 @@ export function BoardTabela({
   );
 
   const visiveis = cols.filter((c) => c.ativo);
-  const ocultas = cols.filter((c) => !c.ativo);
+  const recolocaveis = [
+    ...cols.filter((c) => !c.ativo),
+    ...COLUNAS_PADRAO().filter((p) => !cols.some((c) => c.id === p.id)),
+  ];
   const extrasForm = visiveis.filter((c) => !c.sistema);
 
   const editor: EditorColunas = {
@@ -141,7 +144,13 @@ export function BoardTabela({
           ...(tipo === "selecao" ? { opcoes: [] } : {}),
         },
       ]),
-    ocultas,
+    restaurar: (col) =>
+      salvarCols(
+        cols.some((c) => c.id === col.id)
+          ? cols.map((c) => (c.id === col.id ? { ...c, ativo: true } : c))
+          : [...cols, { ...col, ativo: true }],
+      ),
+    recolocaveis,
   };
 
   const responsavelPadrao = membros?.find((m) => m.papel === "funcionario")?.id;
@@ -838,33 +847,21 @@ function CabecalhoColuna({
                 <span className="ml-1 text-[10px] text-fg-tertiary">{tipoRotulo}</span>
               )}
               <div className="ml-auto flex gap-1">
-                {!FIXAS.has(c.id) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAberto(false);
-                      editor.alterar(c.id, { ativo: false });
-                    }}
-                    title="Ocultar coluna (volta pelo +)"
-                    className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-foreground"
-                  >
-                    <EyeOff className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {!c.sistema && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!confirm(`Excluir a coluna "${c.nome}" deste quadro?`)) return;
-                      setAberto(false);
-                      editor.excluir(c.id);
-                    }}
-                    title="Excluir coluna"
-                    className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-danger"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const aviso = c.sistema
+                      ? `Excluir a coluna "${c.nome}" deste quadro? (Dá pra recolocar pelo "+".)`
+                      : `Excluir a coluna "${c.nome}" deste quadro?`;
+                    if (!confirm(aviso)) return;
+                    setAberto(false);
+                    editor.excluir(c.id);
+                  }}
+                  title="Excluir coluna"
+                  className="grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] text-fg-tertiary hover:bg-surface-hover hover:text-danger"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           </div>
@@ -932,20 +929,20 @@ function BotaoNovaColuna({ editor }: { editor: EditorColunas }) {
             </button>
           </form>
 
-          {editor.ocultas.length > 0 && (
+          {editor.recolocaveis.length > 0 && (
             <div className="mt-1.5 border-t border-border p-1 pt-2">
               <p className="mb-1 text-[10px] uppercase tracking-wide text-fg-tertiary">
-                Colunas ocultas
+                Recolocar coluna
               </p>
-              {editor.ocultas.map((c) => (
+              {editor.recolocaveis.map((c) => (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => editor.alterar(c.id, { ativo: true })}
+                  onClick={() => editor.restaurar(c)}
                   className="flex w-full items-center justify-between rounded-[var(--radius-sm)] px-2 py-1 text-left text-sm text-fg-secondary hover:bg-surface-hover hover:text-foreground"
                 >
                   {c.nome}
-                  <span className="text-[10px] text-accent">mostrar</span>
+                  <span className="text-[10px] text-accent">recolocar</span>
                 </button>
               ))}
             </div>
