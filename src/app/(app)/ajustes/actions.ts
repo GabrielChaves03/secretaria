@@ -119,7 +119,7 @@ export async function testarWhatsapp(
     montarMensagemNitro({
       nome: perfil.nome,
       papel: perfil.papel,
-      corpo: "✅ Teste do Nitro: se você recebeu isto, os avisos de WhatsApp estão funcionando.",
+      corpo: "✅ Tudo certo! Aqui é o Nitro — os avisos de WhatsApp estão funcionando.",
     }),
   );
 

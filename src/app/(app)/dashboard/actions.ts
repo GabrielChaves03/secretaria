@@ -46,9 +46,35 @@ function mesclarCampos(antes: Record<string, string>, novos: Record<string, stri
   return r;
 }
 
+/**
+ * Como quem fez a ação aparece nos avisos de WhatsApp: "Chefe" para o chefe,
+ * senão o primeiro nome.
+ */
+async function nomeDoAtor(
+  supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
+  atorId: string,
+) {
+  const { data } = await supabase
+    .from("usuarios")
+    .select("nome, papel")
+    .eq("id", atorId)
+    .maybeSingle();
+  if (data?.papel === "chefe") return "O chefe";
+  const primeiro = (data?.nome as string | null)?.trim().split(/\s+/)[0];
+  return primeiro || "Alguém";
+}
+
 /** Corpo do aviso de WhatsApp de demanda atribuída. */
-function corpoAtribuicao(titulo: string, dataEntrega: string, descricao: string) {
-  const linhas = [`📌 Você tem uma nova demanda: *${titulo}*`];
+function corpoAtribuicao(
+  ator: string,
+  titulo: string,
+  dataEntrega: string,
+  descricao: string,
+) {
+  const linhas = [
+    `📌 ${ator} atribuiu uma demanda para você:`,
+    `*${titulo}*`,
+  ];
   if (dataEntrega) linhas.push(`Prazo: ${formatarDiaMes(dataEntrega)}`);
   if (descricao) {
     linhas.push(descricao.length > 280 ? `${descricao.slice(0, 280)}…` : descricao);
@@ -107,10 +133,11 @@ export async function criarDemanda(
   if (error) return { erro: error.message };
 
   if (donoId !== usuario.id) {
+    const ator = await nomeDoAtor(supabase, usuario.id);
     await avisarDono({
       donoId,
       tipo: "atribuicao",
-      corpo: corpoAtribuicao(titulo, dataEntrega, descricao),
+      corpo: corpoAtribuicao(ator, titulo, dataEntrega, descricao),
       demandaId: criada.id as string,
     });
   }
@@ -185,25 +212,26 @@ export async function atualizarDemanda(
   if (donoId && donoId !== usuario.id) {
     const reatribuida = donoId !== donoAnterior;
     const mudouStatus = !!status && status !== statusAnterior;
+    const ator = await nomeDoAtor(supabase, usuario.id);
     if (reatribuida) {
       await avisarDono({
         donoId,
         tipo: "atribuicao",
-        corpo: corpoAtribuicao(titulo, dataEntrega, descricao),
+        corpo: corpoAtribuicao(ator, titulo, dataEntrega, descricao),
         demandaId: id,
       });
     } else if (mudouStatus) {
       await avisarDono({
         donoId,
         tipo: "status",
-        corpo: `🔄 A demanda *${titulo}* agora está *${status}*.`,
+        corpo: `🔄 ${ator} moveu *${titulo}* para *${status}*.`,
         demandaId: id,
       });
     } else {
       await avisarDono({
         donoId,
         tipo: "status",
-        corpo: `✏️ A demanda *${titulo}* foi atualizada.`,
+        corpo: `✏️ ${ator} atualizou *${titulo}*.`,
         demandaId: id,
       });
     }
@@ -222,10 +250,11 @@ async function avisarMudancaStatus(
 ) {
   const donoId = demanda?.usuario_id as string | undefined;
   if (!donoId || donoId === atorId) return;
+  const ator = await nomeDoAtor(await criarClienteServidor(), atorId);
   await avisarDono({
     donoId,
     tipo: "status",
-    corpo: `🔄 A demanda *${demanda?.titulo}* agora está *${status}*.`,
+    corpo: `🔄 ${ator} moveu *${demanda?.titulo}* para *${status}*.`,
     demandaId: id,
   });
 }

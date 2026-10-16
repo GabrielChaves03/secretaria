@@ -109,10 +109,10 @@ export async function processarAvisosAgendados(
         d.data_entrega === amanha ? "amanha" : d.data_entrega === hoje ? "hoje" : "atrasada";
       const corpo =
         tipo === "amanha"
-          ? `⏳ A demanda *${d.titulo}* vence amanhã (${formatarDiaMes(d.data_entrega)}).`
+          ? `⏳ *${d.titulo}* vence amanhã (${formatarDiaMes(d.data_entrega)}).`
           : tipo === "hoje"
-            ? `⚠️ A demanda *${d.titulo}* vence *hoje*.`
-            : `🔴 A demanda *${d.titulo}* venceu ontem e ainda não foi concluída.`;
+            ? `⚠️ *${d.titulo}* vence *hoje*.`
+            : `🔴 *${d.titulo}* venceu ontem (${formatarDiaMes(d.data_entrega)}) e ainda não foi concluída.`;
       avisos.push({
         chave: `prazo:${d.id}:${tipo}:${d.data_entrega}`,
         escritorioId: d.escritorio_id,
@@ -143,7 +143,7 @@ export async function processarAvisosAgendados(
         chave: `compromisso:${c.id}:${c.data_hora}`,
         escritorioId: c.escritorio_id,
         usuarioId: c.usuario_id,
-        corpo: `⏰ Lembrete: *${c.titulo}* às ${horaMinuto(c.data_hora)} (daqui a ${faltam} min).`,
+        corpo: `⏰ *${c.titulo}* começa às ${horaMinuto(c.data_hora)} (em ${faltam} min).`,
         link: `${origem}/calendario`,
       });
     }
