@@ -18,8 +18,8 @@ export const metadata = { title: "Meu Trabalho" };
 
 /**
  * "Meu Trabalho": as demandas do usuário logado, de todos os quadros, num
- * board por status. "Nova demanda" aqui pede o quadro onde criar (toda
- * demanda mora num quadro).
+ * board por status. "Nova demanda" aqui pede o quadro onde criar, ou
+ * "Geral" (demanda sem operação).
  */
 export default async function PaginaDashboard({
   searchParams,

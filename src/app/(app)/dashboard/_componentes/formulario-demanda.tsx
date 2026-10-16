@@ -96,26 +96,21 @@ export function FormularioDemanda({
           <label htmlFor="quadro_id" className="rotulo block">
             Quadro
           </label>
-          {quadros.length === 0 ? (
-            <p className="text-sm text-fg-tertiary">
-              Nenhum quadro de tarefas ainda — o chefe cria um no menu lateral.
-            </p>
-          ) : (
-            <select
-              id="quadro_id"
-              name="quadro_id"
-              required
-              value={quadroEscolhido}
-              onChange={(e) => setQuadroEscolhido(e.target.value)}
-              className="campo"
-            >
-              {quadros.map((q) => (
-                <option key={q.id} value={q.id}>
-                  {q.operacao} › {q.nome}
-                </option>
-              ))}
-            </select>
-          )}
+          <select
+            id="quadro_id"
+            name="quadro_id"
+            value={quadroEscolhido}
+            onChange={(e) => setQuadroEscolhido(e.target.value)}
+            className="campo"
+          >
+            {/* Geral = demanda sem quadro/operação (quadro_id nulo) */}
+            <option value="">Geral (sem operação)</option>
+            {quadros.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.operacao} › {q.nome}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
